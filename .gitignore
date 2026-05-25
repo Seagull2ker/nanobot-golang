@@ -1,0 +1,12 @@
+/nanobot
+/nanobot.exe
+/dist/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+vendor/
+config.json
+.env
