@@ -20,7 +20,7 @@ type AgentLoop struct {
 	cfg   *AgentConfig
 
 	mu       sync.Mutex
-	sessions sync.Map    // key(string) -> chan *types.InboundMessage
+	sessions sync.Map // key(string) -> chan *types.InboundMessage
 	wg       sync.WaitGroup
 	tasks    map[string]context.CancelFunc
 }

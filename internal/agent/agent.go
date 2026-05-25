@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudwego/eino/components/tool"
 	emodel "github.com/cloudwego/eino/components/model"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
@@ -177,11 +177,11 @@ type spawnTool struct {
 }
 
 func (s *spawnTool) Name() string               { return "spawn" }
-func (s *spawnTool) Description() string         { return "Spawn a background subagent" }
-func (s *spawnTool) Parameters() map[string]any  { return map[string]any{} }
-func (s *spawnTool) ReadOnly() bool              { return false }
-func (s *spawnTool) ConcurrencySafe() bool       { return true }
-func (s *spawnTool) Exclusive() bool             { return false }
+func (s *spawnTool) Description() string        { return "Spawn a background subagent" }
+func (s *spawnTool) Parameters() map[string]any { return map[string]any{} }
+func (s *spawnTool) ReadOnly() bool             { return false }
+func (s *spawnTool) ConcurrencySafe() bool      { return true }
+func (s *spawnTool) Exclusive() bool            { return false }
 func (s *spawnTool) Execute(ctx context.Context, params map[string]any) (*nanotool.Result, error) {
 	task, _ := params["task"].(string)
 	label, _ := params["label"].(string)
@@ -195,8 +195,8 @@ func (s *spawnTool) Execute(ctx context.Context, params map[string]any) (*nanoto
 // wrappedEinoTool wraps an Eino BaseTool with progress reporting.
 // The progress callback is captured via closure from NewAgent and routed through a.OnProgress.
 type wrappedEinoTool struct {
-	inner       tool.BaseTool
-	onProgress  func(ctx context.Context, toolName, status string)
+	inner      tool.BaseTool
+	onProgress func(ctx context.Context, toolName, status string)
 }
 
 func (w *wrappedEinoTool) Info(ctx context.Context) (*schema.ToolInfo, error) {

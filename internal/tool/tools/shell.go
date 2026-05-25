@@ -53,8 +53,8 @@ func (t *execTool) Parameters() map[string]any {
 }
 
 func (t *execTool) ReadOnly() bool        { return false }
-func (t *execTool) ConcurrencySafe() bool  { return false }
-func (t *execTool) Exclusive() bool        { return true }
+func (t *execTool) ConcurrencySafe() bool { return false }
+func (t *execTool) Exclusive() bool       { return true }
 
 func (t *execTool) Execute(ctx context.Context, params map[string]any) (*tool.Result, error) {
 	command, _ := params["command"].(string)

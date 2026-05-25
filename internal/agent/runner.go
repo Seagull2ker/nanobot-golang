@@ -16,7 +16,7 @@ type AgentRunner struct {
 
 // RunnerConfig configures recovery behavior.
 type RunnerConfig struct {
-	MaxEmptyRetries    int // default 2
+	MaxEmptyRetries     int // default 2
 	MaxLengthRecoveries int // default 3
 }
 
@@ -24,7 +24,7 @@ type RunnerConfig struct {
 func DefaultRunnerConfig() RunnerConfig {
 	return RunnerConfig{
 		MaxEmptyRetries:     2,
-		MaxLengthRecoveries:  3,
+		MaxLengthRecoveries: 3,
 	}
 }
 

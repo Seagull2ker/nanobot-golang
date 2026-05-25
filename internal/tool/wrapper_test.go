@@ -15,11 +15,11 @@ type mockTool struct {
 }
 
 func (m *mockTool) Name() string               { return m.name }
-func (m *mockTool) Description() string         { return "mock" }
-func (m *mockTool) Parameters() map[string]any  { return nil }
-func (m *mockTool) ReadOnly() bool              { return m.readOnly }
-func (m *mockTool) ConcurrencySafe() bool       { return true }
-func (m *mockTool) Exclusive() bool             { return m.exclusive }
+func (m *mockTool) Description() string        { return "mock" }
+func (m *mockTool) Parameters() map[string]any { return nil }
+func (m *mockTool) ReadOnly() bool             { return m.readOnly }
+func (m *mockTool) ConcurrencySafe() bool      { return true }
+func (m *mockTool) Exclusive() bool            { return m.exclusive }
 func (m *mockTool) Execute(ctx context.Context, params map[string]any) (*Result, error) {
 	return m.result, m.err
 }

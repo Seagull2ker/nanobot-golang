@@ -23,9 +23,9 @@ func TestAllToolsRegistered(t *testing.T) {
 
 func TestToolProperties(t *testing.T) {
 	tests := []struct {
-		name       string
-		readOnly   bool
-		exclusive  bool
+		name      string
+		readOnly  bool
+		exclusive bool
 	}{
 		{"exec", false, true},
 		{"read_file", true, false},

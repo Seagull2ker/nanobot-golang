@@ -46,12 +46,12 @@ func WrapAllTools(tools []Tool, maxChars int, onProgress ProgressFunc) []Tool {
 	return wrapped
 }
 
-func (w *wrappedTool) Name() string             { return w.inner.Name() }
-func (w *wrappedTool) Description() string       { return w.inner.Description() }
+func (w *wrappedTool) Name() string               { return w.inner.Name() }
+func (w *wrappedTool) Description() string        { return w.inner.Description() }
 func (w *wrappedTool) Parameters() map[string]any { return w.inner.Parameters() }
-func (w *wrappedTool) ReadOnly() bool            { return w.inner.ReadOnly() }
-func (w *wrappedTool) ConcurrencySafe() bool     { return w.inner.ConcurrencySafe() }
-func (w *wrappedTool) Exclusive() bool           { return w.inner.Exclusive() }
+func (w *wrappedTool) ReadOnly() bool             { return w.inner.ReadOnly() }
+func (w *wrappedTool) ConcurrencySafe() bool      { return w.inner.ConcurrencySafe() }
+func (w *wrappedTool) Exclusive() bool            { return w.inner.Exclusive() }
 
 func (w *wrappedTool) Execute(ctx context.Context, params map[string]any) (*Result, error) {
 	name := w.Name()

@@ -9,10 +9,10 @@ import (
 
 // Registry manages tool registration, lookup, and execution.
 type Registry struct {
-	mu       sync.RWMutex
-	tools    map[string]Tool
-	cache    []map[string]any
-	dirty    bool
+	mu    sync.RWMutex
+	tools map[string]Tool
+	cache []map[string]any
+	dirty bool
 }
 
 // globalRegistry is the singleton Registry for init()-based self-registration.

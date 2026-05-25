@@ -92,4 +92,3 @@ func Save(cfg *Config, path string) error {
 	}
 	return nil
 }
-

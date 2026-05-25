@@ -108,9 +108,9 @@ func (s *Server) handleChatCompletion(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
-		"id":      fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
-		"object":  "chat.completion",
-		"model":   req.Model,
+		"id":     fmt.Sprintf("chatcmpl-%d", time.Now().UnixNano()),
+		"object": "chat.completion",
+		"model":  req.Model,
 		"choices": []map[string]any{
 			{
 				"index": 0,

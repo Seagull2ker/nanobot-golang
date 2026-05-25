@@ -7,12 +7,12 @@ import (
 
 type testTool struct{}
 
-func (t *testTool) Name() string                   { return "test" }
-func (t *testTool) Description() string             { return "A test tool" }
-func (t *testTool) Parameters() map[string]any       { return map[string]any{} }
-func (t *testTool) ReadOnly() bool                   { return true }
-func (t *testTool) ConcurrencySafe() bool            { return true }
-func (t *testTool) Exclusive() bool                  { return false }
+func (t *testTool) Name() string               { return "test" }
+func (t *testTool) Description() string        { return "A test tool" }
+func (t *testTool) Parameters() map[string]any { return map[string]any{} }
+func (t *testTool) ReadOnly() bool             { return true }
+func (t *testTool) ConcurrencySafe() bool      { return true }
+func (t *testTool) Exclusive() bool            { return false }
 func (t *testTool) Execute(ctx context.Context, params map[string]any) (*Result, error) {
 	return &Result{Content: "ok"}, nil
 }
@@ -148,5 +148,5 @@ func TestSchemaTypes(t *testing.T) {
 	}
 }
 
-func intPtr(i int) *int           { return &i }
+func intPtr(i int) *int              { return &i }
 func floatPtrPtr(f float64) *float64 { return &f }

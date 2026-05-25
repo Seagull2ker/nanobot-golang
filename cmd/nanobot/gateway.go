@@ -106,13 +106,13 @@ func runGateway(cmd *cobra.Command, args []string) error {
 
 	// 8. Heartbeat.
 	if cfg.Gateway.Heartbeat.Enabled {
-			hbSvc := heartbeat.New(
-				time.Duration(cfg.Gateway.Heartbeat.IntervalS)*time.Second,
-				cfg.Gateway.Heartbeat.KeepRecentMessages,
-				chatModel,
-				config.GetPromptsDir()+"/HEARTBEAT.md",
-			)
-			go hbSvc.Run(ctx)
+		hbSvc := heartbeat.New(
+			time.Duration(cfg.Gateway.Heartbeat.IntervalS)*time.Second,
+			cfg.Gateway.Heartbeat.KeepRecentMessages,
+			chatModel,
+			config.GetPromptsDir()+"/HEARTBEAT.md",
+		)
+		go hbSvc.Run(ctx)
 	}
 
 	// 10. Command router.
@@ -146,8 +146,8 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		WaitGroup:          nil,
 		ShutdownTimeout:    15 * time.Second,
 		Components: app.RuntimeComponents{
-			Feishu:    nil,
-			API:       nil,
+			Feishu:               nil,
+			API:                  nil,
 			ComponentStopTimeout: 5 * time.Second,
 		},
 	})

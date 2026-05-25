@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Seagull2ker/nanobot-go/internal/types"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
-	"github.com/Seagull2ker/nanobot-go/internal/types"
 )
 
 // ChatModelAdapter wraps Eino's ChatModel with nanobot-specific metadata.

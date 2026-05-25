@@ -11,10 +11,14 @@ import (
 
 // RuntimeComponents collects stoppable subsystems for orderly shutdown.
 type RuntimeComponents struct {
-	Feishu    interface{ Stop(ctx context.Context) error }
+	Feishu interface {
+		Stop(ctx context.Context) error
+	}
 	Heartbeat interface{ Stop() }
 	Cron      interface{ Stop() }
-	API       interface{ Stop(ctx context.Context) error }
+	API       interface {
+		Stop(ctx context.Context) error
+	}
 
 	ComponentStopTimeout time.Duration
 }

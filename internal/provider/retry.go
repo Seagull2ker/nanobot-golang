@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/Seagull2ker/nanobot-go/internal/errors"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
-	"github.com/Seagull2ker/nanobot-go/internal/errors"
 )
 
 type retryAdapter struct {

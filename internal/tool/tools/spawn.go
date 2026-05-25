@@ -24,9 +24,9 @@ type spawnTool struct{}
 func init() { tool.Register(&spawnTool{}) }
 
 func (t *spawnTool) Name() string          { return "spawn" }
-func (t *spawnTool) ReadOnly() bool         { return false }
-func (t *spawnTool) ConcurrencySafe() bool  { return true }
-func (t *spawnTool) Exclusive() bool        { return false }
+func (t *spawnTool) ReadOnly() bool        { return false }
+func (t *spawnTool) ConcurrencySafe() bool { return true }
+func (t *spawnTool) Exclusive() bool       { return false }
 
 func (t *spawnTool) Description() string {
 	return "Spawn a background subagent to work on a task independently. The subagent will report back when done."

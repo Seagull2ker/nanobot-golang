@@ -139,10 +139,10 @@ func (s *IntegerSchema) Validate(value any, path string) []string {
 
 // NumberSchema is a float parameter.
 type NumberSchema struct {
-	Description string  `json:"description,omitempty"`
+	Description string   `json:"description,omitempty"`
 	Minimum     *float64 `json:"minimum,omitempty"`
 	Maximum     *float64 `json:"maximum,omitempty"`
-	Nullable    bool    `json:"nullable,omitempty"`
+	Nullable    bool     `json:"nullable,omitempty"`
 }
 
 func (s *NumberSchema) ToJSONSchema() map[string]any {
@@ -265,11 +265,11 @@ func (s *ArraySchema) Validate(value any, path string) []string {
 
 // ObjectSchema is an object parameter.
 type ObjectSchema struct {
-	Description          string               `json:"description,omitempty"`
-	Properties           map[string]Schema    `json:"-"`
-	Required             []string             `json:"required,omitempty"`
-	AdditionalProperties bool                 `json:"additionalProperties,omitempty"`
-	Nullable             bool                 `json:"nullable,omitempty"`
+	Description          string            `json:"description,omitempty"`
+	Properties           map[string]Schema `json:"-"`
+	Required             []string          `json:"required,omitempty"`
+	AdditionalProperties bool              `json:"additionalProperties,omitempty"`
+	Nullable             bool              `json:"nullable,omitempty"`
 }
 
 func (s *ObjectSchema) ToJSONSchema() map[string]any {

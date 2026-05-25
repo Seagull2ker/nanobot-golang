@@ -37,7 +37,7 @@ func NewWebSocketChannel(host string, port int) *WebSocketChannel {
 	}
 }
 
-func (w *WebSocketChannel) Name() string           { return "websocket" }
+func (w *WebSocketChannel) Name() string            { return "websocket" }
 func (w *WebSocketChannel) SupportsStreaming() bool { return true }
 
 func (w *WebSocketChannel) Start(ctx context.Context, bus *bus.MessageBus) error {

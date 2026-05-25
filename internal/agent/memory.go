@@ -69,16 +69,16 @@ func (s *MemoryStore) GetMemoryContext() string {
 
 // ConsolidationConfig controls consolidation behavior.
 type ConsolidationConfig struct {
-	ContextWindowTokens  int     // model context window size
-	MaxConsolidationRounds int   // max rounds per trigger (default 5)
-	ConsolidationRatio   float64 // target fraction of context window (default 0.5)
+	ContextWindowTokens    int     // model context window size
+	MaxConsolidationRounds int     // max rounds per trigger (default 5)
+	ConsolidationRatio     float64 // target fraction of context window (default 0.5)
 }
 
 func DefaultConsolidationConfig() ConsolidationConfig {
 	return ConsolidationConfig{
-		ContextWindowTokens:   65536,
+		ContextWindowTokens:    65536,
 		MaxConsolidationRounds: 5,
-		ConsolidationRatio:    0.5,
+		ConsolidationRatio:     0.5,
 	}
 }
 
@@ -101,7 +101,7 @@ func NewMemoryConsolidator(store *MemoryStore, chatModel model.BaseChatModel, se
 		Store:      store,
 		chatModel:  chatModel,
 		sessionMgr: sessionMgr,
-		config:    cfg,
+		config:     cfg,
 	}
 }
 

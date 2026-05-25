@@ -21,7 +21,7 @@ type readFileTool struct{}
 
 func init() { tool.Register(&readFileTool{}) }
 
-func (t *readFileTool) Name() string         { return "read_file" }
+func (t *readFileTool) Name() string          { return "read_file" }
 func (t *readFileTool) ReadOnly() bool        { return true }
 func (t *readFileTool) ConcurrencySafe() bool { return true }
 func (t *readFileTool) Exclusive() bool       { return false }
@@ -127,9 +127,9 @@ type writeFileTool struct{}
 func init() { tool.Register(&writeFileTool{}) }
 
 func (t *writeFileTool) Name() string          { return "write_file" }
-func (t *writeFileTool) ReadOnly() bool         { return false }
-func (t *writeFileTool) ConcurrencySafe() bool  { return false }
-func (t *writeFileTool) Exclusive() bool        { return false }
+func (t *writeFileTool) ReadOnly() bool        { return false }
+func (t *writeFileTool) ConcurrencySafe() bool { return false }
+func (t *writeFileTool) Exclusive() bool       { return false }
 
 func (t *writeFileTool) Description() string {
 	return "Write content to a file in the workspace. Creates parent directories if needed."
@@ -182,9 +182,9 @@ type editFileTool struct{}
 func init() { tool.Register(&editFileTool{}) }
 
 func (t *editFileTool) Name() string          { return "edit_file" }
-func (t *editFileTool) ReadOnly() bool         { return false }
-func (t *editFileTool) ConcurrencySafe() bool  { return false }
-func (t *editFileTool) Exclusive() bool        { return false }
+func (t *editFileTool) ReadOnly() bool        { return false }
+func (t *editFileTool) ConcurrencySafe() bool { return false }
+func (t *editFileTool) Exclusive() bool       { return false }
 
 func (t *editFileTool) Description() string {
 	return "Edit a file by replacing a string. Supports whitespace-tolerant matching and provides diagnostics on failure."
@@ -385,9 +385,9 @@ type listDirTool struct{}
 func init() { tool.Register(&listDirTool{}) }
 
 func (t *listDirTool) Name() string          { return "list_dir" }
-func (t *listDirTool) ReadOnly() bool         { return true }
-func (t *listDirTool) ConcurrencySafe() bool  { return true }
-func (t *listDirTool) Exclusive() bool        { return false }
+func (t *listDirTool) ReadOnly() bool        { return true }
+func (t *listDirTool) ConcurrencySafe() bool { return true }
+func (t *listDirTool) Exclusive() bool       { return false }
 
 func (t *listDirTool) Description() string {
 	return "List files and directories in the workspace."

@@ -46,14 +46,16 @@ type AgentHook interface {
 // BaseHook provides no-op defaults for AgentHook.
 type BaseHook struct{}
 
-func (h *BaseHook) BeforeIteration(ctx context.Context, state *IterationState) error         { return nil }
-func (h *BaseHook) AfterIteration(ctx context.Context, state *IterationState) error          { return nil }
-func (h *BaseHook) OnStream(ctx context.Context, delta string) error                         { return nil }
-func (h *BaseHook) OnStreamEnd(ctx context.Context, resuming bool) error                      { return nil }
-func (h *BaseHook) BeforeExecuteTools(ctx context.Context, calls []ToolCallInfo) error        { return nil }
-func (h *BaseHook) EmitReasoning(ctx context.Context, delta string) error                     { return nil }
-func (h *BaseHook) EmitReasoningEnd(ctx context.Context) error                                { return nil }
-func (h *BaseHook) FinalizeContent(ctx context.Context, content string) (string, error)       { return content, nil }
+func (h *BaseHook) BeforeIteration(ctx context.Context, state *IterationState) error   { return nil }
+func (h *BaseHook) AfterIteration(ctx context.Context, state *IterationState) error    { return nil }
+func (h *BaseHook) OnStream(ctx context.Context, delta string) error                   { return nil }
+func (h *BaseHook) OnStreamEnd(ctx context.Context, resuming bool) error               { return nil }
+func (h *BaseHook) BeforeExecuteTools(ctx context.Context, calls []ToolCallInfo) error { return nil }
+func (h *BaseHook) EmitReasoning(ctx context.Context, delta string) error              { return nil }
+func (h *BaseHook) EmitReasoningEnd(ctx context.Context) error                         { return nil }
+func (h *BaseHook) FinalizeContent(ctx context.Context, content string) (string, error) {
+	return content, nil
+}
 
 // CompositeHook fans out to multiple hooks with error isolation.
 type CompositeHook struct {

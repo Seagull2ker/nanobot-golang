@@ -117,28 +117,28 @@ func DefaultRegistry() *Registry {
 	r.Register(ProviderSpec{
 		Name: "openai", Backend: BackendOpenAICompat,
 		Keywords: []string{"openai", "gpt-4", "gpt-5", "o1", "o3", "o4"},
-		EnvKey: "OPENAI_API_KEY", DefaultModel: "gpt-4o", DefaultAPIBase: "https://api.openai.com/v1",
-		Models: []string{"gpt-4o", "gpt-4o-mini", "gpt-4.1", "o1", "o3", "o4-mini", "gpt-5"},
+		EnvKey:   "OPENAI_API_KEY", DefaultModel: "gpt-4o", DefaultAPIBase: "https://api.openai.com/v1",
+		Models:           []string{"gpt-4o", "gpt-4o-mini", "gpt-4.1", "o1", "o3", "o4-mini", "gpt-5"},
 		SupportsThinking: true, ThinkingStyle: ThinkingReasoningSplit,
 	})
 	r.Register(ProviderSpec{
 		Name: "anthropic", Backend: BackendAnthropic,
 		Keywords: []string{"claude", "anthropic"},
-		EnvKey: "ANTHROPIC_API_KEY", DefaultModel: "claude-opus-4-5", DefaultAPIBase: "https://api.anthropic.com",
+		EnvKey:   "ANTHROPIC_API_KEY", DefaultModel: "claude-opus-4-5", DefaultAPIBase: "https://api.anthropic.com",
 		Models:           []string{"claude-opus-4-5", "claude-sonnet-4-6", "claude-haiku-4-5"},
 		SupportsThinking: true,
 	})
 	r.Register(ProviderSpec{
 		Name: "deepseek", Backend: BackendOpenAICompat,
 		Keywords: []string{"deepseek", "deepseek-chat", "deepseek-reasoner"},
-		EnvKey: "DEEPSEEK_API_KEY", DefaultModel: "deepseek-chat", DefaultAPIBase: "https://api.deepseek.com",
+		EnvKey:   "DEEPSEEK_API_KEY", DefaultModel: "deepseek-chat", DefaultAPIBase: "https://api.deepseek.com",
 		Models:           []string{"deepseek-chat", "deepseek-reasoner"},
 		SupportsThinking: true, ThinkingStyle: ThinkingType,
 	})
 	r.Register(ProviderSpec{
 		Name: "dashscope", Backend: BackendOpenAICompat,
 		Keywords: []string{"qwen", "dashscope", "tongyi", "qwen-plus", "qwen-max"},
-		EnvKey: "DASHSCOPE_API_KEY", DefaultModel: "qwen-max", DefaultAPIBase: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+		EnvKey:   "DASHSCOPE_API_KEY", DefaultModel: "qwen-max", DefaultAPIBase: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 		Models:           []string{"qwen-max", "qwen-plus", "qwen-turbo"},
 		SupportsThinking: true, ThinkingStyle: ThinkingEnabled,
 	})

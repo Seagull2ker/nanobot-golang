@@ -47,9 +47,9 @@ type cronTool struct{}
 func init() { tool.Register(&cronTool{}) }
 
 func (t *cronTool) Name() string          { return "cron" }
-func (t *cronTool) ReadOnly() bool         { return false }
-func (t *cronTool) ConcurrencySafe() bool  { return true }
-func (t *cronTool) Exclusive() bool        { return false }
+func (t *cronTool) ReadOnly() bool        { return false }
+func (t *cronTool) ConcurrencySafe() bool { return true }
+func (t *cronTool) Exclusive() bool       { return false }
 
 func (t *cronTool) Description() string {
 	return "Manage scheduled tasks. Actions: add (schedule a job), list (show all jobs), remove (delete a job by ID)."

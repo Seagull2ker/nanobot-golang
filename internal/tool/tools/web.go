@@ -152,9 +152,9 @@ func init() {
 }
 
 func (t *webFetchTool) Name() string          { return "web_fetch" }
-func (t *webFetchTool) ReadOnly() bool         { return true }
-func (t *webFetchTool) ConcurrencySafe() bool  { return true }
-func (t *webFetchTool) Exclusive() bool        { return false }
+func (t *webFetchTool) ReadOnly() bool        { return true }
+func (t *webFetchTool) ConcurrencySafe() bool { return true }
+func (t *webFetchTool) Exclusive() bool       { return false }
 
 func (t *webFetchTool) Description() string {
 	return "Fetch and convert web page content. Returns Markdown text. Use for reading documentation, API responses, or web pages."
@@ -253,9 +253,9 @@ type webSearchTool struct{}
 func init() { tool.Register(&webSearchTool{}) }
 
 func (t *webSearchTool) Name() string          { return "web_search" }
-func (t *webSearchTool) ReadOnly() bool         { return true }
-func (t *webSearchTool) ConcurrencySafe() bool  { return true }
-func (t *webSearchTool) Exclusive() bool        { return false }
+func (t *webSearchTool) ReadOnly() bool        { return true }
+func (t *webSearchTool) ConcurrencySafe() bool { return true }
+func (t *webSearchTool) Exclusive() bool       { return false }
 
 func (t *webSearchTool) Description() string {
 	return "Search the web using DuckDuckGo. Returns titles, URLs, and snippets."

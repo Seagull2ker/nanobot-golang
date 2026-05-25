@@ -23,9 +23,9 @@ type messageTool struct{}
 func init() { tool.Register(&messageTool{}) }
 
 func (t *messageTool) Name() string          { return "message" }
-func (t *messageTool) ReadOnly() bool         { return false }
-func (t *messageTool) ConcurrencySafe() bool  { return true }
-func (t *messageTool) Exclusive() bool        { return false }
+func (t *messageTool) ReadOnly() bool        { return false }
+func (t *messageTool) ConcurrencySafe() bool { return true }
+func (t *messageTool) Exclusive() bool       { return false }
 
 func (t *messageTool) Description() string {
 	return "Send a message to the user. Use this to notify the user about important results or ask clarifying questions."

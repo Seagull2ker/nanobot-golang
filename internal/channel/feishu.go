@@ -66,7 +66,7 @@ func NewFeishuChannel(cfg FeishuConfig, messageBus *bus.MessageBus) *FeishuChann
 	}
 }
 
-func (c *FeishuChannel) Name() string           { return "feishu" }
+func (c *FeishuChannel) Name() string            { return "feishu" }
 func (c *FeishuChannel) SupportsStreaming() bool { return false }
 
 // ---------- Lifecycle ----------
@@ -674,4 +674,3 @@ func safeString(s *string) string {
 	}
 	return *s
 }
-

@@ -18,9 +18,9 @@ type applyPatchTool struct{}
 func init() { tool.Register(&applyPatchTool{}) }
 
 func (t *applyPatchTool) Name() string          { return "apply_patch" }
-func (t *applyPatchTool) ReadOnly() bool         { return false }
-func (t *applyPatchTool) ConcurrencySafe() bool  { return false }
-func (t *applyPatchTool) Exclusive() bool        { return false }
+func (t *applyPatchTool) ReadOnly() bool        { return false }
+func (t *applyPatchTool) ConcurrencySafe() bool { return false }
+func (t *applyPatchTool) Exclusive() bool       { return false }
 
 func (t *applyPatchTool) Description() string {
 	return "Apply multiple file edits in a single call. Each edit specifies a file_path, old_string, and new_string."
@@ -31,7 +31,7 @@ func (t *applyPatchTool) Parameters() map[string]any {
 		"type": "object",
 		"properties": map[string]any{
 			"edits": map[string]any{
-				"type": "array",
+				"type":        "array",
 				"description": "List of file edits to apply",
 				"items": map[string]any{
 					"type": "object",
