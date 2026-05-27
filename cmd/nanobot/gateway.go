@@ -77,7 +77,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		}
 
 		// 6. ReAct agent.
-		bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, "", "", sessions, nil, nil)
+		bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, config.GetPromptsDir(), config.GetSkillsDir(), sessions, nil, nil)
 		if err != nil {
 			return fmt.Errorf("build agent: %w", err)
 		}
