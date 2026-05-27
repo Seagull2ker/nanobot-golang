@@ -105,7 +105,14 @@ func (c *FeishuChannel) Start(ctx context.Context, bus *bus.MessageBus) error {
 		}
 	}()
 
-	go c.consumeOutbound(ctx)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("feishu consumeOutbound panic", "panic", r)
+			}
+		}()
+		c.consumeOutbound(ctx)
+	}()
 	return nil
 }
 
@@ -435,12 +442,15 @@ func (c *FeishuChannel) consumeOutbound(ctx context.Context) {
 				return
 			}
 			if msg.Channel != "feishu" {
+				slog.Debug("feishu outbound skipped — not feishu channel", "channel", msg.Channel, "chat_id", msg.ChatID)
 				continue
 			}
 			// Skip progress messages.
 			if isProgress, _ := msg.Metadata["_progress"].(bool); isProgress {
+				slog.Debug("feishu outbound skipped — progress message", "chat_id", msg.ChatID)
 				continue
 			}
+			slog.Info("feishu outbound message received", "chat_id", msg.ChatID, "content_len", len(msg.Content))
 			if err := c.Send(ctx, msg); err != nil {
 				slog.Error("feishu outbound failed", "error", err, "chat_id", msg.ChatID)
 			}

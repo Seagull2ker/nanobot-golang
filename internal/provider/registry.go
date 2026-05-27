@@ -5,45 +5,17 @@ import (
 	"strings"
 )
 
-// BackendType identifies which adapter implementation to use.
-type BackendType string
-
-const (
-	BackendOpenAICompat BackendType = "openai_compat"
-	BackendAnthropic    BackendType = "anthropic"
-)
-
-// ThinkingStyle defines how thinking/reasoning is injected into API requests.
-type ThinkingStyle string
-
-const (
-	ThinkingNone           ThinkingStyle = ""
-	ThinkingType           ThinkingStyle = "thinking_type"
-	ThinkingEnabled        ThinkingStyle = "enable_thinking"
-	ThinkingReasoningSplit ThinkingStyle = "reasoning_split"
-)
-
-// ModelOverride allows per-model parameter overrides.
-type ModelOverride struct {
-	Temperature     *float64
-	MaxTokens       *int
-	ReasoningEffort *string
-}
-
 // ProviderSpec describes a single LLM provider in the registry.
 type ProviderSpec struct {
 	Name             string
-	Backend          BackendType
+	Type             string // "openai", "claude", "deepseek", "gemini", "ollama", "openrouter"
 	Keywords         []string
 	EnvKey           string
 	DefaultModel     string
 	DefaultAPIBase   string
 	Models           []string
-	SupportsThinking bool
-	ThinkingStyle    ThinkingStyle
 	IsGateway        bool
-	StripModelPrefix bool
-	ModelOverrides   map[string]ModelOverride
+	SupportsThinking bool
 }
 
 // Registry manages all registered ProviderSpecs.
@@ -115,38 +87,60 @@ func (r *Registry) List() []ProviderSpec {
 func DefaultRegistry() *Registry {
 	r := NewRegistry()
 	r.Register(ProviderSpec{
-		Name: "openai", Backend: BackendOpenAICompat,
+		Name: "openai", Type: "openai",
 		Keywords: []string{"openai", "gpt-4", "gpt-5", "o1", "o3", "o4"},
 		EnvKey:   "OPENAI_API_KEY", DefaultModel: "gpt-4o", DefaultAPIBase: "https://api.openai.com/v1",
 		Models:           []string{"gpt-4o", "gpt-4o-mini", "gpt-4.1", "o1", "o3", "o4-mini", "gpt-5"},
-		SupportsThinking: true, ThinkingStyle: ThinkingReasoningSplit,
+		SupportsThinking: true,
 	})
 	r.Register(ProviderSpec{
-		Name: "anthropic", Backend: BackendAnthropic,
+		Name: "anthropic", Type: "claude",
 		Keywords: []string{"claude", "anthropic"},
 		EnvKey:   "ANTHROPIC_API_KEY", DefaultModel: "claude-opus-4-5", DefaultAPIBase: "https://api.anthropic.com",
 		Models:           []string{"claude-opus-4-5", "claude-sonnet-4-6", "claude-haiku-4-5"},
 		SupportsThinking: true,
 	})
 	r.Register(ProviderSpec{
-		Name: "deepseek", Backend: BackendOpenAICompat,
+		Name: "deepseek", Type: "deepseek",
 		Keywords: []string{"deepseek", "deepseek-chat", "deepseek-reasoner"},
-		EnvKey:   "DEEPSEEK_API_KEY", DefaultModel: "deepseek-chat", DefaultAPIBase: "https://api.deepseek.com",
-		Models:           []string{"deepseek-chat", "deepseek-reasoner"},
-		SupportsThinking: true, ThinkingStyle: ThinkingType,
+		EnvKey:   "DEEPSEEK_API_KEY", DefaultModel: "deepseek-v4-flash", DefaultAPIBase: "https://api.deepseek.com",
+		Models: []string{"deepseek-v4-flash", "deepseek-v4-pro"},
 	})
 	r.Register(ProviderSpec{
-		Name: "dashscope", Backend: BackendOpenAICompat,
+		Name: "dashscope", Type: "openai",
 		Keywords: []string{"qwen", "dashscope", "tongyi", "qwen-plus", "qwen-max"},
 		EnvKey:   "DASHSCOPE_API_KEY", DefaultModel: "qwen-max", DefaultAPIBase: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-		Models:           []string{"qwen-max", "qwen-plus", "qwen-turbo"},
-		SupportsThinking: true, ThinkingStyle: ThinkingEnabled,
+		Models:   []string{"qwen-max", "qwen-plus", "qwen-turbo"},
 	})
-	r.Register(ProviderSpec{Name: "openrouter", Backend: BackendOpenAICompat, Keywords: []string{"openrouter"}, EnvKey: "OPENROUTER_API_KEY", DefaultModel: "openai/gpt-4o", DefaultAPIBase: "https://openrouter.ai/api/v1", IsGateway: true})
-	r.Register(ProviderSpec{Name: "groq", Backend: BackendOpenAICompat, Keywords: []string{"groq", "llama"}, EnvKey: "GROQ_API_KEY", DefaultModel: "llama-3.3-70b-versatile", DefaultAPIBase: "https://api.groq.com/openai/v1"})
-	r.Register(ProviderSpec{Name: "gemini", Backend: BackendOpenAICompat, Keywords: []string{"gemini", "google"}, EnvKey: "GEMINI_API_KEY", DefaultModel: "gemini-2.5-pro", DefaultAPIBase: "https://generativelanguage.googleapis.com/v1beta/openai"})
-	r.Register(ProviderSpec{Name: "ollama", Backend: BackendOpenAICompat, Keywords: []string{"ollama"}, DefaultModel: "llama3", DefaultAPIBase: "http://localhost:11434/v1"})
-	r.Register(ProviderSpec{Name: "siliconflow", Backend: BackendOpenAICompat, Keywords: []string{"siliconflow", "silicon"}, EnvKey: "SILICONFLOW_API_KEY", DefaultModel: "deepseek-ai/DeepSeek-V3", DefaultAPIBase: "https://api.siliconflow.cn/v1"})
-	r.Register(ProviderSpec{Name: "zhipu", Backend: BackendOpenAICompat, Keywords: []string{"zhipu", "glm", "chatglm"}, EnvKey: "ZHIPU_API_KEY", DefaultModel: "glm-4-plus", DefaultAPIBase: "https://open.bigmodel.cn/api/paas/v4"})
+	r.Register(ProviderSpec{
+		Name: "openrouter", Type: "openrouter",
+		Keywords: []string{"openrouter"}, EnvKey: "OPENROUTER_API_KEY",
+		DefaultModel: "openai/gpt-4o", DefaultAPIBase: "https://openrouter.ai/api/v1",
+		IsGateway: true,
+	})
+	r.Register(ProviderSpec{
+		Name: "groq", Type: "openai",
+		Keywords: []string{"groq", "llama"}, EnvKey: "GROQ_API_KEY",
+		DefaultModel: "llama-3.3-70b-versatile", DefaultAPIBase: "https://api.groq.com/openai/v1",
+	})
+	r.Register(ProviderSpec{
+		Name: "gemini", Type: "gemini",
+		Keywords: []string{"gemini", "google"}, EnvKey: "GEMINI_API_KEY",
+		DefaultModel: "gemini-2.5-pro", DefaultAPIBase: "https://generativelanguage.googleapis.com/v1beta/openai",
+	})
+	r.Register(ProviderSpec{
+		Name: "ollama", Type: "ollama",
+		Keywords: []string{"ollama"}, DefaultModel: "llama3", DefaultAPIBase: "http://localhost:11434/v1",
+	})
+	r.Register(ProviderSpec{
+		Name: "siliconflow", Type: "openai",
+		Keywords: []string{"siliconflow", "silicon"}, EnvKey: "SILICONFLOW_API_KEY",
+		DefaultModel: "deepseek-ai/DeepSeek-V3", DefaultAPIBase: "https://api.siliconflow.cn/v1",
+	})
+	r.Register(ProviderSpec{
+		Name: "zhipu", Type: "openai",
+		Keywords: []string{"zhipu", "glm", "chatglm"}, EnvKey: "ZHIPU_API_KEY",
+		DefaultModel: "glm-4-plus", DefaultAPIBase: "https://open.bigmodel.cn/api/paas/v4",
+	})
 	return r
 }

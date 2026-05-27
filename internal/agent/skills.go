@@ -209,8 +209,8 @@ func (l *SkillsLoader) BuildSkillsSummary() string {
 	var lines []string
 	lines = append(lines, "<skills>")
 	for _, sk := range all {
-		name := sk.Meta.Name
-		desc := sk.Meta.Description
+		name := escapeXML(sk.Meta.Name)
+		desc := escapeXML(sk.Meta.Description)
 		if desc == "" {
 			desc = name
 		}
@@ -223,10 +223,10 @@ func (l *SkillsLoader) BuildSkillsSummary() string {
 
 		if !available {
 			if missing := l.getMissingRequirements(sk); missing != "" {
-				lines = append(lines, fmt.Sprintf("    <requires>%s</requires>", missing))
+				lines = append(lines, fmt.Sprintf("    <requires>%s</requires>", escapeXML(missing)))
 			}
 			if install := l.getInstallInstructions(sk); install != "" {
-				lines = append(lines, fmt.Sprintf("    <install>%s</install>", install))
+				lines = append(lines, fmt.Sprintf("    <install>%s</install>", escapeXML(install)))
 			}
 		}
 		lines = append(lines, "  </skill>")
@@ -341,4 +341,11 @@ func (l *SkillsLoader) getInstallInstructions(sk *Skill) string {
 		}
 	}
 	return strings.Join(parts, "; ")
+}
+
+func escapeXML(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }

@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Seagull2ker/nanobot-go/internal/agent"
+	"github.com/Seagull2ker/nanobot-go/internal/config"
 	"github.com/Seagull2ker/nanobot-go/internal/provider"
+	"github.com/Seagull2ker/nanobot-go/internal/session"
 	"github.com/Seagull2ker/nanobot-go/internal/tool"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 )
@@ -35,7 +37,7 @@ func runAgent(ctx context.Context, message string, raw bool) error {
 	cfg := mustLoadConfig()
 	initLogging()
 
-	chatModel, err := provider.BuildChatModelFromPreset("", cfg)
+	chatModel, err := provider.BuildChatModelFromPreset(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("build chat model: %w", err)
 	}
@@ -48,7 +50,17 @@ func runAgent(ctx context.Context, message string, raw bool) error {
 		}
 	}
 
-	bot, err := agent.NewAgent(ctx, cfg, chatModel, toolInstances, nil, "", "", nil, nil, nil)
+	sessions, err := session.NewSessionManager(config.GetSessionsDir())
+	if err != nil {
+		return fmt.Errorf("init sessions: %w", err)
+	}
+
+	memStore, err := agent.NewMemoryStore(config.GetMemoryDir())
+	if err != nil {
+		return fmt.Errorf("init memory: %w", err)
+	}
+
+	bot, err := agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, "", "", sessions, nil, nil)
 	if err != nil {
 		return fmt.Errorf("build agent: %w", err)
 	}

@@ -39,7 +39,7 @@ func (l *Loader) BuildSystemMessages(ctx context.Context) ([]*schema.Message, er
 
 	// HEARTBEAT.md is optional.
 	if content, err := l.readFile("HEARTBEAT.md"); err == nil {
-		parts = append(parts, "# HEARTBEAT TASKS\n\n"+content)
+		parts = append(parts, "# HEARTBEAT TASKS\n"+content+"\n\n")
 	}
 
 	return []*schema.Message{schema.SystemMessage(strings.Join(parts, "\n\n"))}, nil
@@ -48,13 +48,13 @@ func (l *Loader) BuildSystemMessages(ctx context.Context) ([]*schema.Message, er
 func fileToSection(name, content string) string {
 	switch name {
 	case "SOUL.md":
-		return "# SOUL\n\n" + content
+		return "# SOUL\n" + content + "\n\n"
 	case "USER.md":
-		return "# USER PROFILE\n\n" + content
+		return "# USER PROFILE\n" + content + "\n\n"
 	case "TOOLS.md":
-		return "# TOOL USAGE\n\n" + content
+		return "# TOOL USAGE\n" + content + "\n\n"
 	case "AGENTS.md":
-		return "# AGENT INSTRUCTIONS\n\n" + content
+		return "# AGENT INSTRUCTIONS\n" + content + "\n\n"
 	default:
 		return content
 	}

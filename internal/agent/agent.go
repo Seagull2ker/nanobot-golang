@@ -356,6 +356,8 @@ func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schem
 	}
 
 	// Stream with MessageFuture for full turn capture.
+	logAgent.Info("user request", "session", sessionID, "input", input)
+
 	futureOpt, future := react.WithMessageFuture()
 	stream, err := a.reactAgent.Stream(taskCtx, messages, futureOpt)
 	if err != nil {
@@ -407,6 +409,8 @@ func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schem
 		}
 		stream.Close()
 		collectWg.Wait()
+
+		logAgent.Info("model response", "session", sessionID, "output", fullResponse.String())
 
 		// Save turn: user input + all collected messages.
 		inputMsg := schema.UserMessage(input)
@@ -542,9 +546,9 @@ func (a *Agent) buildMessages(ctx context.Context, history []*schema.Message, in
 func skillsContent(skills []*Skill) string {
 	var parts []string
 	for _, s := range skills {
-		parts = append(parts, "### "+s.Meta.Name+"\n"+s.Content)
+		parts = append(parts, "### Skill: "+s.Meta.Name+"\n"+s.Content)
 	}
-	return strings.Join(parts, "\n\n")
+	return strings.Join(parts, "\n\n---\n\n")
 }
 
 func buildRuntimeContext(ctx context.Context) string {

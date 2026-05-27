@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Seagull2ker/nanobot-go/internal/config"
@@ -75,6 +76,7 @@ func TestRegistryList(t *testing.T) {
 
 func TestBuildChatModelByBackend(t *testing.T) {
 	r := DefaultRegistry()
+	ctx := context.Background()
 
 	openaiSpec, _ := r.Get("openai")
 	anthropicSpec, _ := r.Get("anthropic")
@@ -83,7 +85,7 @@ func TestBuildChatModelByBackend(t *testing.T) {
 		APIKey: "test-key",
 	}
 
-	oa, err := BuildChatModel(openaiSpec, cfg)
+	oa, err := BuildChatModel(ctx, openaiSpec, cfg)
 	if err != nil {
 		t.Fatalf("BuildChatModel(openai): %v", err)
 	}
@@ -94,7 +96,7 @@ func TestBuildChatModelByBackend(t *testing.T) {
 		t.Error("openai should support thinking")
 	}
 
-	an, err := BuildChatModel(anthropicSpec, cfg)
+	an, err := BuildChatModel(ctx, anthropicSpec, cfg)
 	if err != nil {
 		t.Fatalf("BuildChatModel(anthropic): %v", err)
 	}
@@ -106,21 +108,23 @@ func TestBuildChatModelByBackend(t *testing.T) {
 	}
 }
 
-func TestBuildChatModelUnknownBackend(t *testing.T) {
+func TestBuildChatModelUnknownType(t *testing.T) {
+	ctx := context.Background()
 	spec := ProviderSpec{
-		Name:    "unknown",
-		Backend: BackendType("nonexistent"),
+		Name: "unknown",
+		Type: "nonexistent",
 	}
-	_, err := BuildChatModel(spec, config.ProviderConfig{})
+	_, err := BuildChatModel(ctx, spec, config.ProviderConfig{})
 	if err == nil {
-		t.Error("expected error for unknown backend")
+		t.Error("expected error for unknown model type")
 	}
 }
 
 func TestRetryAdapterPassthrough(t *testing.T) {
+	ctx := context.Background()
 	r := DefaultRegistry()
 	spec, _ := r.Get("openai")
-	adapter, _ := BuildChatModel(spec, config.ProviderConfig{APIKey: "test"})
+	adapter, _ := BuildChatModel(ctx, spec, config.ProviderConfig{APIKey: "test"})
 
 	retry := WithRetry(adapter, "standard")
 
@@ -133,9 +137,10 @@ func TestRetryAdapterPassthrough(t *testing.T) {
 }
 
 func TestFallbackAdapterPassthrough(t *testing.T) {
+	ctx := context.Background()
 	r := DefaultRegistry()
 	spec, _ := r.Get("openai")
-	adapter, _ := BuildChatModel(spec, config.ProviderConfig{APIKey: "test"})
+	adapter, _ := BuildChatModel(ctx, spec, config.ProviderConfig{APIKey: "test"})
 
 	fallback := WithFallback(adapter, nil, nil)
 
@@ -145,9 +150,10 @@ func TestFallbackAdapterPassthrough(t *testing.T) {
 }
 
 func TestWithRetryDefaultsToStandard(t *testing.T) {
+	ctx := context.Background()
 	r := DefaultRegistry()
 	spec, _ := r.Get("openai")
-	adapter, _ := BuildChatModel(spec, config.ProviderConfig{APIKey: "test"})
+	adapter, _ := BuildChatModel(ctx, spec, config.ProviderConfig{APIKey: "test"})
 
 	retry := WithRetry(adapter, "bogus")
 	if retry == nil {

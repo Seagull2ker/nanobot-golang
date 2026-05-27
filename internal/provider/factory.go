@@ -1,26 +1,57 @@
 package provider
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/cloudwego/eino/components/model"
 
 	"github.com/Seagull2ker/nanobot-go/internal/config"
 )
 
+// chatModelWrapper wraps a model.ChatModel to satisfy ChatModelAdapter
+// by adding default model name and thinking support metadata.
+type chatModelWrapper struct {
+	model.ChatModel
+	defaultModel     string
+	supportsThinking bool
+}
+
+func (w *chatModelWrapper) GetDefaultModel() string {
+	return w.defaultModel
+}
+
+func (w *chatModelWrapper) SupportsThinking() bool {
+	return w.supportsThinking
+}
+
+// Ensure chatModelWrapper satisfies ChatModelAdapter.
+var _ ChatModelAdapter = (*chatModelWrapper)(nil)
+
 // BuildChatModel creates a ChatModelAdapter for the given provider spec and config.
-func BuildChatModel(spec ProviderSpec, cfg config.ProviderConfig) (ChatModelAdapter, error) {
-	switch spec.Backend {
-	case BackendOpenAICompat:
-		return newOpenAICompatAdapter(spec, cfg)
-	case BackendAnthropic:
-		return newAnthropicAdapter(spec, cfg)
-	default:
-		return nil, fmt.Errorf("provider: unknown backend type %s", spec.Backend)
+func BuildChatModel(ctx context.Context, spec ProviderSpec, cfg config.ProviderConfig) (ChatModelAdapter, error) {
+	apiBase := firstNonEmpty(cfg.APIBase, spec.DefaultAPIBase)
+	apiKey := cfg.APIKey
+
+	chatModel, err := NewChatModel(ctx, ModelConfig{
+		Type:    spec.Type,
+		BaseURL: apiBase,
+		APIKey:  apiKey,
+		Model:   spec.DefaultModel,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("provider %s: %w", spec.Name, err)
 	}
+
+	return &chatModelWrapper{
+		ChatModel:        chatModel,
+		defaultModel:     spec.DefaultModel,
+		supportsThinking: spec.SupportsThinking,
+	}, nil
 }
 
 // BuildChatModelFromPreset builds a ChatModelAdapter from the agent defaults config.
-// presetName is ignored (no more presets); uses cfg.Agent directly.
-func BuildChatModelFromPreset(presetName string, cfg *config.Config) (ChatModelAdapter, error) {
+func BuildChatModelFromPreset(ctx context.Context, cfg *config.Config) (ChatModelAdapter, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("provider: config is nil")
 	}
@@ -42,5 +73,14 @@ func BuildChatModelFromPreset(presetName string, cfg *config.Config) (ChatModelA
 	}
 
 	providerCfg := cfg.Providers[providerName]
-	return BuildChatModel(spec, providerCfg)
+	return BuildChatModel(ctx, spec, providerCfg)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

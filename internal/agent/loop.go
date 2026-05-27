@@ -100,6 +100,7 @@ func (l *AgentLoop) sessionWorker(ctx context.Context, key string, ch chan *type
 			if !ok {
 				return
 			}
+			slog.Info("session worker received message", "session", key, "channel", msg.Channel, "content_len", len(msg.Content))
 			l.processMessage(ctx, msg)
 		}
 	}
@@ -123,8 +124,11 @@ func (l *AgentLoop) processMessage(ctx context.Context, msg *types.InboundMessag
 	// Call agent with retry for transient errors.
 	content, err := l.chatWithRetry(taskCtx, sessionKey, msg.Content)
 
+	slog.Info("agent turn complete", "session", sessionKey, "content_len", len(content), "error", err)
+
 	// Don't send duplicate response if a tool already sent a message this turn.
 	if turnCtx.WasMessageSent() {
+		slog.Info("skipping publish — message already sent this turn", "session", sessionKey)
 		return
 	}
 
@@ -136,10 +140,12 @@ func (l *AgentLoop) processMessage(ctx context.Context, msg *types.InboundMessag
 	}
 
 	if content == "" {
+		slog.Info("skipping publish — empty content", "session", sessionKey)
 		return
 	}
 
 	// Publish response.
+	slog.Info("publishing outbound", "session", sessionKey, "channel", msg.Channel, "chat_id", msg.ChatID, "content_len", len(content))
 	l.bus.PublishOutbound(context.Background(), &types.OutboundMessage{
 		Channel:  msg.Channel,
 		ChatID:   msg.ChatID,

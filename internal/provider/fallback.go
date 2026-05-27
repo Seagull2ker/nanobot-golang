@@ -11,7 +11,7 @@ import (
 )
 
 // FactoryFunc creates a ChatModelAdapter from a spec name.
-type FactoryFunc func(specName string) (ChatModelAdapter, error)
+type FactoryFunc func(ctx context.Context, specName string) (ChatModelAdapter, error)
 
 type fallbackAdapter struct {
 	primary   ChatModelAdapter
@@ -67,7 +67,7 @@ func (f *fallbackAdapter) Generate(ctx context.Context, input []*schema.Message,
 			continue
 		}
 
-		fallback, fbErr := f.factory(specName)
+		fallback, fbErr := f.factory(ctx, specName)
 		if fbErr != nil {
 			continue
 		}

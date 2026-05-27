@@ -17,6 +17,7 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/cron"
 	"github.com/Seagull2ker/nanobot-go/internal/heartbeat"
 	"github.com/Seagull2ker/nanobot-go/internal/provider"
+	"github.com/Seagull2ker/nanobot-go/internal/session"
 	"github.com/Seagull2ker/nanobot-go/internal/tool"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 )
@@ -47,7 +48,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	var loop *agent.AgentLoop
 	var toolInstances []tool.Tool
 
-	chatModel, err := provider.BuildChatModelFromPreset("", cfg)
+	chatModel, err := provider.BuildChatModelFromPreset(ctx, cfg)
 	if err != nil {
 		slog.Warn("chat model not available — agent disabled", "error", err)
 	} else {
@@ -62,8 +63,21 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		}
 		slog.Info("tools loaded", "count", len(toolInstances))
 
-		// 4. ReAct agent.
-		bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, nil, "", "", nil, nil, nil)
+		// 4. Sessions.
+		var sessions *session.SessionManager
+		sessions, err = session.NewSessionManager(config.GetSessionsDir())
+		if err != nil {
+			return fmt.Errorf("init sessions: %w", err)
+		}
+
+		// 5. Memory store.
+		memStore, err := agent.NewMemoryStore(config.GetMemoryDir())
+		if err != nil {
+			return fmt.Errorf("init memory: %w", err)
+		}
+
+		// 6. ReAct agent.
+		bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, "", "", sessions, nil, nil)
 		if err != nil {
 			return fmt.Errorf("build agent: %w", err)
 		}
@@ -91,8 +105,8 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		chManager.Register(feishuCh)
 	}
 
-	wsChannel := channel.NewWebSocketChannel(cfg.Gateway.Host, cfg.Gateway.Port)
-	chManager.Register(wsChannel)
+	// wsChannel := channel.NewWebSocketChannel(cfg.Gateway.Host, cfg.Gateway.Port)
+	// chManager.Register(wsChannel)
 
 	if err := chManager.StartAll(ctx); err != nil {
 		return fmt.Errorf("start channels: %w", err)

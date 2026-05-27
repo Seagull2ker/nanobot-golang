@@ -80,7 +80,11 @@
       "Bash(grep -n \"var GlobalHandlers\\\\|package\" \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino@v0.8.13/callbacks/interface.go\")",
       "Bash(grep -n \"package\\\\|GlobalHandlers\" \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino@v0.8.13/callbacks/interface.go\")",
       "Bash(grep -rn \"var GlobalHandlers\" \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino@v0.8.13/callbacks/\")",
-      "Bash(grep -rn \"var GlobalHandlers\" \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino@v0.8.13/\")"
+      "Bash(grep -rn \"var GlobalHandlers\" \"$\\(go env GOMODCACHE\\)/github.com/cloudwego/eino@v0.8.13/\")",
+      "Bash(go version *)",
+      "Bash(GOTOOLCHAIN=go1.25.0 go build ./internal/agent/)",
+      "Bash(GOTOOLCHAIN=go1.25.0 go vet *)",
+      "Bash(GOTOOLCHAIN=go1.25.0 go build ./...)"
     ]
   }
 }
