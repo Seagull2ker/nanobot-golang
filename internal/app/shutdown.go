@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -40,7 +41,7 @@ type GracefulShutdownConfig struct {
 // NewSignalChannel creates a buffered channel subscribed to SIGINT and SIGTERM.
 func NewSignalChannel() chan os.Signal {
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	return sigCh
 }
 

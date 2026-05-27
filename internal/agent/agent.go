@@ -23,6 +23,7 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/session"
 	nanotool "github.com/Seagull2ker/nanobot-go/internal/tool"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
+	"github.com/Seagull2ker/nanobot-go/internal/trace"
 )
 
 var logAgent = slog.With("module", "agent")
@@ -334,6 +335,9 @@ func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schem
 	// Lazy-connect MCP servers on first real message.
 	a.ensureMCPConnected(ctx)
 
+	// Trace the full turn.
+	spanCtx := trace.StartSpan(ctx, "agent.turn", map[string]any{"session": sessionID, "input": input})
+
 	// Create cancellable context for /stop support.
 	taskCtx, taskCancel := context.WithCancel(ctx)
 	a.activeTasks.Store(sessionID, taskCancel)
@@ -438,6 +442,8 @@ func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schem
 
 		// Post-consolidation (use background context since streaming ctx may be cancelled).
 		a.consolidator.MaybeConsolidateByTokens(context.Background(), sess, 2000)
+
+		trace.EndSpan(spanCtx, nil)
 	}()
 
 	return pipeReader, nil

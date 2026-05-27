@@ -84,7 +84,14 @@
       "Bash(go version *)",
       "Bash(GOTOOLCHAIN=go1.25.0 go build ./internal/agent/)",
       "Bash(GOTOOLCHAIN=go1.25.0 go vet *)",
-      "Bash(GOTOOLCHAIN=go1.25.0 go build ./...)"
+      "Bash(GOTOOLCHAIN=go1.25.0 go build ./...)",
+      "Bash(go clean *)",
+      "Bash(sed -i 's/agent.NewAgentLoop\\(messageBus, bot, &agent.AgentConfig{/agent.RunLoop\\(ctx, messageBus, bot,/' cmd/nanobot/gateway.go)",
+      "Bash(sed -i '/MaxConcurrentSessions: cfg.Agent.MaxConcurrentSubagents,/d' cmd/nanobot/gateway.go)",
+      "Bash(sed -i '/}\\)/!{N};/MaxConcurrentSubagents/{N;s/.*\\\\n.*/}/}' cmd/nanobot/gateway.go)",
+      "Bash(sed -i '/go loop.Run\\(ctx\\)/d' cmd/nanobot/gateway.go)",
+      "Bash(sed -i '94,98d' cmd/nanobot/gateway.go)",
+      "Bash(sed -i '93a\\\\\\\\t\\\\t\\\\tloop = agent.RunLoop\\(ctx, messageBus, bot, cfg.Agent.MaxConcurrentSubagents\\)' cmd/nanobot/gateway.go)"
     ]
   }
 }

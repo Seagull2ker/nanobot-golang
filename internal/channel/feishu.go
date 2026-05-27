@@ -62,7 +62,6 @@ func NewFeishuChannel(cfg FeishuConfig, messageBus *bus.MessageBus) *FeishuChann
 		client: lark.NewClient(cfg.AppID, cfg.AppSecret),
 		bus:    messageBus,
 		config: cfg,
-		wsDone: make(chan struct{}),
 	}
 }
 
@@ -130,12 +129,15 @@ func (c *FeishuChannel) Stop(ctx context.Context) error {
 	}
 
 	stop()
+	if done == nil {
+		return nil
+	}
 	select {
 	case <-done:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	return nil
 }
 
 // ---------- Inbound: message receive → MessageBus ----------
@@ -419,6 +421,7 @@ func normalizeFeishuText(text string) string {
 // nil/empty list → deny all. ["*"] → allow all.
 func isSenderAllowed(channelName, senderID string, allowFrom []string) bool {
 	if len(allowFrom) == 0 {
+		slog.Debug("feishu outbound skipped — no allowFrom", "channel", channelName)
 		return false
 	}
 	for _, allowed := range allowFrom {

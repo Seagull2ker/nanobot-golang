@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,6 +21,7 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/session"
 	"github.com/Seagull2ker/nanobot-go/internal/tool"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
+	"github.com/Seagull2ker/nanobot-go/internal/trace"
 )
 
 func newGatewayCmd() *cobra.Command {
@@ -34,6 +36,13 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	cfg := mustLoadConfig()
 	initLogging()
 
+	// Initialize tracing (Langfuse via Eino callbacks).
+	traceShutdown, err := trace.Init(cfg.Trace)
+	if err != nil {
+		return fmt.Errorf("trace init: %w", err)
+	}
+	defer traceShutdown()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -45,10 +54,10 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	// 2. ChatModel — skip agent assembly if no provider configured.
 	var chatModel provider.ChatModelAdapter
 	var bot *agent.Agent
-	var loop *agent.AgentLoop
+	var loopWg sync.WaitGroup
 	var toolInstances []tool.Tool
 
-	chatModel, err := provider.BuildChatModelFromPreset(ctx, cfg)
+	chatModel, err = provider.BuildChatModelFromPreset(ctx, cfg)
 	if err != nil {
 		slog.Warn("chat model not available — agent disabled", "error", err)
 	} else {
@@ -82,16 +91,13 @@ func runGateway(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("build agent: %w", err)
 		}
 		slog.Info("agent built")
+		bot.OnProgress = tool.NewProgressHandler(messageBus)
 
-		// 5. AgentLoop.
-		loop = agent.NewAgentLoop(messageBus, bot, &agent.AgentConfig{
-			MaxConcurrentSessions: cfg.Agent.MaxConcurrentSubagents,
-		})
-		go loop.Run(ctx)
+		go agent.RunInboundLoop(ctx, messageBus, bot, &loopWg)
 	}
 
 	// 6. Channels — Feishu if configured, WebSocket for WebUI.
-	chManager := channel.NewManager(messageBus)
+	chManager := channel.NewChannelManager(messageBus)
 
 	if fc := cfg.Channels.Feishu; fc.AppID != "" {
 		feishuCh := channel.NewFeishuChannel(channel.FeishuConfig{
@@ -149,15 +155,18 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	fmt.Println("\nAll systems ready. Press Ctrl-C to stop.")
 
 	// Graceful shutdown orchestration.
-	closeInbound := func() { messageBus.Close() }
+	closeInbound := func() {
+		messageBus.Close()
+		messageBus.CloseOutbound()
+	}
 
 	<-app.StartGracefulShutdown(app.GracefulShutdownConfig{
 		SigCh:              app.NewSignalChannel(),
 		CancelRoot:         cancel,
-		CancelAgentTasks:   loop,
+		CancelAgentTasks:   bot,
+		WaitGroup:          &loopWg,
 		CancelSubagentTask: nil,
 		CloseInbound:       closeInbound,
-		WaitGroup:          nil,
 		ShutdownTimeout:    15 * time.Second,
 		Components: app.RuntimeComponents{
 			Feishu:               nil,

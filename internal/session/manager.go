@@ -225,6 +225,7 @@ func (m *SessionManager) load(key string) (*Session, error) {
 		} else if s != nil {
 			var msg schema.Message
 			if err := json.Unmarshal(line, &msg); err == nil {
+				normalizeToolCalls(&msg)
 				s.Messages = append(s.Messages, &msg)
 			}
 		}
@@ -233,6 +234,17 @@ func (m *SessionManager) load(key string) (*Session, error) {
 }
 
 // getSessionPath returns the JSONL file path for a session key.
+func normalizeToolCalls(msg *schema.Message) {
+	for i := range msg.ToolCalls {
+		if msg.ToolCalls[i].Type == "" {
+			msg.ToolCalls[i].Type = "function"
+		}
+		if msg.ToolCalls[i].Function.Arguments == "" {
+			msg.ToolCalls[i].Function.Arguments = "{}"
+		}
+	}
+}
+
 func (m *SessionManager) getSessionPath(key string) string {
 	safe := strings.ReplaceAll(key, ":", "_")
 	return filepath.Join(m.sessionsDir, safe+".jsonl")

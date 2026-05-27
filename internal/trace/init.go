@@ -1,25 +1,34 @@
 package trace
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/Seagull2ker/nanobot-go/internal/config"
+	"github.com/cloudwego/eino-ext/callbacks/langfuse"
+	"github.com/cloudwego/eino/callbacks"
 )
 
 // Init initializes Langfuse tracing. Returns a shutdown function to be called before exit.
 // If cfg.Enabled is false, returns a no-op shutdown.
-func Init(cfg config.TracingConfig) (shutdown func()) {
+func Init(cfg config.TracingConfig) (shutdown func(), err error) {
 	if !cfg.Enabled {
-		slog.Debug("tracing disabled")
-		return func() {}
+		return func() {}, nil
 	}
 
-	slog.Info("tracing enabled", "endpoint", cfg.Endpoint)
-	// Full Langfuse initialization: import github.com/cloudwego/eino-ext/callbacks/langfuse
-	// and register via callbacks.AppendGlobalHandlers(handler).
-	// For now, the dependency is present but initialization is deferred to runtime wiring.
-
-	return func() {
-		slog.Info("tracing shutdown")
+	if cfg.Endpoint == "" || cfg.PublicKey == "" || cfg.SecretKey == "" {
+		return nil, fmt.Errorf("trace: enabled but missing required fields (endpoint, publicKey, secretKey)")
 	}
+
+	handler, flusher := langfuse.NewLangfuseHandler(&langfuse.Config{
+		Host:      cfg.Endpoint,
+		PublicKey: cfg.PublicKey,
+		SecretKey: cfg.SecretKey,
+	})
+
+	callbacks.AppendGlobalHandlers(handler)
+
+	slog.Info("Tracing enabled", "module", "trace", "endpoint", cfg.Endpoint)
+
+	return flusher, nil
 }

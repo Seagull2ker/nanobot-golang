@@ -55,6 +55,8 @@ github.com/bytedance/sonic v1.15.0 h1:/PXeWFaR5ElNcVE84U0dOHjiMHQOwNIx3K4ymzh/uS
 github.com/bytedance/sonic v1.15.0/go.mod h1:tFkWrPz0/CUCLEF4ri4UkHekCIcdnkqXw9VduqpJh0k=
 github.com/bytedance/sonic/loader v0.5.0 h1:gXH3KVnatgY7loH5/TkeVyXPfESoqSBSBEiDd5VjlgE=
 github.com/bytedance/sonic/loader v0.5.0/go.mod h1:AR4NYCk5DdzZizZ5djGqQ92eEhCCcdf5x77udYiSJRo=
+github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
+github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/certifi/gocertifi v0.0.0-20190105021004-abcd57078448/go.mod h1:GJKEexRPVJrBSOjoqN5VNOIKJ5Q3RViH6eu3puDRwx4=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
@@ -62,6 +64,8 @@ github.com/cloudwego/base64x v0.1.6 h1:t11wG9AECkCDk5fMSoxmufanudBtJ+/HemLstXDLI
 github.com/cloudwego/base64x v0.1.6/go.mod h1:OFcloc187FXDaYHvrNIjxSe8ncn0OOM8gEHfghB2IPU=
 github.com/cloudwego/eino v0.8.13 h1:z5dhaZNN8TWZbP/lgKxGmF26Ii8fPeUlQCGV/NTtms0=
 github.com/cloudwego/eino v0.8.13/go.mod h1:+2N4nsMPxA6kGBHpH+75JuTfEcGprAMTdsZESrShKpU=
+github.com/cloudwego/eino-ext/callbacks/langfuse v0.1.1 h1:e0q4j2Oq5nA9HhrqZoDnA5xsqccZpGjgyjJO2Abc0es=
+github.com/cloudwego/eino-ext/callbacks/langfuse v0.1.1/go.mod h1:r7DRZ9J/grYlSzK6YKaiWjRMKFYevy1pwbHDYhLoMTo=
 github.com/cloudwego/eino-ext/components/model/claude v0.1.18 h1:px9LBFcj+GfVkSdhS8PTe54y0H3reRuwN5xOLDQI+d4=
 github.com/cloudwego/eino-ext/components/model/claude v0.1.18/go.mod h1:2sGGgwpR60LW+RdG/hcjdGBVEVEJ6EkKxlva8mju9BI=
 github.com/cloudwego/eino-ext/components/model/deepseek v0.1.5 h1:Efal3LNfEIoj3/VClwLArCuxLWHzzcoysdvBXThFdzE=
@@ -76,6 +80,8 @@ github.com/cloudwego/eino-ext/components/model/openrouter v0.1.10 h1:i5YdCW8omvO
 github.com/cloudwego/eino-ext/components/model/openrouter v0.1.10/go.mod h1:WRc1OIXVaf2USal59xrIt+05TUCu9P1c8MQh0FcWG8c=
 github.com/cloudwego/eino-ext/components/tool/mcp/officialmcp v0.1.0 h1:4haF2hnv7+t9JUc4E+6SHo7cRgpi+6hux+YeteT5CW8=
 github.com/cloudwego/eino-ext/components/tool/mcp/officialmcp v0.1.0/go.mod h1:9kDYHgPkYf249MhpGxGxx21MRFdKzTRyK4wDxmowo7o=
+github.com/cloudwego/eino-ext/libs/acl/langfuse v0.1.1 h1:y7LwRyPGcSLPkt/A9HJf+06Z+Jp4yj67zCDpd24762w=
+github.com/cloudwego/eino-ext/libs/acl/langfuse v0.1.1/go.mod h1:mQDhDvELAUjbAl/iJkFqMa1dM8y152OGUpCsy3wBCis=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17 h1:EeVcR1TslRA2IdNW1h/2LaGbPlffwGhQm99jM3zWZiI=
 github.com/cloudwego/eino-ext/libs/acl/openai v0.1.17/go.mod h1:Zkcx6DPTR2NfWmtSXbhItswGw6hqUezNPhNcke0pOG8=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
@@ -126,6 +132,8 @@ github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e/go.mod h1:cIg4er
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l8iNU+DwB5epxmsaqB+rhGL0m5jtYqE=
 github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
+github.com/golang/mock v1.6.0 h1:ErTB+efbowRARo13NNdxyJji2egdxLGQhRaY+DUumQc=
+github.com/golang/mock v1.6.0/go.mod h1:p6yTPP+5HYm5mzsMV8JkE6ZKdX+/wYM6Hr+LicevLPs=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
