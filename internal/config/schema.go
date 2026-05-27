@@ -4,6 +4,7 @@ package config
 
 import (
 	"path/filepath"
+	"time"
 )
 
 // FeishuChannelConfig holds Feishu (Lark) channel credentials.
@@ -159,36 +160,46 @@ func DefaultApiConfig() ApiConfig {
 	return ApiConfig{Host: "127.0.0.1", Port: 8900, Timeout: 120.0}
 }
 
+// Duration wraps time.Duration for JSON serialization as a human-readable string (e.g. "30m", "5s").
+type Duration struct {
+	time.Duration
+}
+
 // HeartbeatConfig holds heartbeat service settings.
 type HeartbeatConfig struct {
-	Enabled            bool `json:"enabled" yaml:"enabled"`
-	IntervalS          int  `json:"intervalS" yaml:"interval_s"`
-	KeepRecentMessages int  `json:"keepRecentMessages" yaml:"keep_recent_messages"`
+	Enabled  bool     `json:"enabled" yaml:"enabled"`
+	Path     string   `json:"path"`
+	Interval Duration `json:"interval"`
 }
 
 // DefaultHeartbeatConfig returns the default heartbeat configuration.
 func DefaultHeartbeatConfig() HeartbeatConfig {
 	return HeartbeatConfig{
-		Enabled:            true,
-		IntervalS:          1800,
-		KeepRecentMessages: 8,
+		Enabled:  false,
+		Path:     "HEARTBEAT.md",
+		Interval: Duration{30 * time.Minute},
+	}
+}
+
+// CronGatewayConfig configures persistence for the cron gateway.
+type CronGatewayConfig struct {
+	StorePath string `json:"storePath"`
+}
+
+func DefaultCronGatewayConfig() CronGatewayConfig {
+	return CronGatewayConfig{
+		StorePath: "",
 	}
 }
 
 // GatewayConfig holds gateway/server settings.
 type GatewayConfig struct {
-	Host      string          `json:"host" yaml:"host"`
-	Port      int             `json:"port" yaml:"port"`
-	Heartbeat HeartbeatConfig `json:"heartbeat" yaml:"heartbeat"`
+	Cron CronGatewayConfig `json:"cron" yaml:"cron"`
 }
 
 // DefaultGatewayConfig returns the default gateway configuration.
 func DefaultGatewayConfig() GatewayConfig {
-	return GatewayConfig{
-		Host:      "127.0.0.1",
-		Port:      18790,
-		Heartbeat: DefaultHeartbeatConfig(),
-	}
+	return GatewayConfig{}
 }
 
 // MCPServerConfig holds MCP server connection settings.
@@ -245,6 +256,7 @@ type Config struct {
 	Providers ProvidersConfig `json:"providers" yaml:"providers"`
 	API       ApiConfig       `json:"api" yaml:"api"`
 	Gateway   GatewayConfig   `json:"gateway" yaml:"gateway"`
+	Heartbeat HeartbeatConfig `json:"heartbeat" yaml:"heartbeat"`
 	Tools     ToolsConfig     `json:"tools" yaml:"tools"`
 	Data      DataConfig      `json:"data" yaml:"data"`
 	Trace     TracingConfig   `json:"trace" yaml:"trace"`
@@ -255,8 +267,9 @@ func DefaultConfig() Config {
 	return Config{
 		Agent:    DefaultAgentConfig(),
 		Channels: DefaultChannelsConfig(),
-		Gateway:  DefaultGatewayConfig(),
-		Tools:    DefaultToolsConfig(),
+		Gateway:   DefaultGatewayConfig(),
+		Heartbeat: DefaultHeartbeatConfig(),
+		Tools:     DefaultToolsConfig(),
 	}
 }
 

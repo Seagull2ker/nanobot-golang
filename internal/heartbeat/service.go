@@ -2,189 +2,197 @@ package heartbeat
 
 import (
 	"context"
+	"encoding/json"
+	"log/slog"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
+
+	"github.com/Seagull2ker/nanobot-go/internal/config"
 )
 
-// ChatModel is the minimal LLM interface needed for heartbeat decisions.
-type ChatModel interface {
-	Generate(ctx context.Context, input []*schema.Message, opts ...model.Option) (*schema.Message, error)
-}
+var logHB = slog.With("module", "heartbeat")
 
-// HeartbeatService periodically asks the LLM to review HEARTBEAT.md
-// and decide whether to execute pending tasks.
+// Action is the heartbeat decision: skip or run.
+type Action string
+
+const (
+	ActionSkip Action = "skip"
+	ActionRun  Action = "run"
+)
+
+// HeartbeatService periodically reviews HEARTBEAT.md via LLM and executes pending tasks.
 type HeartbeatService struct {
-	mu             sync.Mutex
-	interval       time.Duration
-	keepRecentMsgs int
-	lastRun        time.Time
-
-	chatModel     ChatModel
 	heartbeatPath string
-	onExecute     func(ctx context.Context, tasks string)
+	model         model.ChatModel
+	onExecute     func(ctx context.Context, tasks string) error
+	interval      time.Duration
+	stopCh        chan struct{}
 }
 
-// New creates a HeartbeatService.
-// interval: check frequency (default 30min). keepRecentMsgs: not used currently.
-// chatModel and heartbeatPath enable LLM-driven decision; if nil/empty, heartbeat is passive.
-func New(interval time.Duration, keepRecentMsgs int, chatModel ChatModel, heartbeatPath string) *HeartbeatService {
+// New creates a HeartbeatService. Call Start() to begin the ticker loop.
+func New(path string, chatModel model.ChatModel, onExecute func(ctx context.Context, tasks string) error, interval time.Duration) *HeartbeatService {
 	if interval <= 0 {
 		interval = 30 * time.Minute
 	}
-	if keepRecentMsgs <= 0 {
-		keepRecentMsgs = 8
-	}
 	return &HeartbeatService{
-		interval:       interval,
-		keepRecentMsgs: keepRecentMsgs,
-		chatModel:      chatModel,
-		heartbeatPath:  heartbeatPath,
+		heartbeatPath: path,
+		model:         chatModel,
+		onExecute:     onExecute,
+		interval:      interval,
+		stopCh:        make(chan struct{}),
 	}
 }
 
-// OnExecute sets the callback invoked when the LLM decides to run tasks.
-func (h *HeartbeatService) OnExecute(fn func(ctx context.Context, tasks string)) {
-	h.onExecute = fn
-}
-
-// Run starts the heartbeat loop.
-func (h *HeartbeatService) Run(ctx context.Context) error {
-	ticker := time.NewTicker(h.interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			h.lastRun = time.Now()
-			h.Tick(ctx)
-		}
-	}
-}
-
-// Tick performs a single heartbeat check. If a chatModel is configured,
-// it reads HEARTBEAT.md and asks the LLM to decide skip/run.
-func (h *HeartbeatService) Tick(ctx context.Context) {
-	if h.chatModel == nil || h.heartbeatPath == "" {
-		return
-	}
-
-	content, err := os.ReadFile(h.heartbeatPath)
-	if err != nil || len(content) == 0 {
-		return
-	}
-
-	// Check if file has only headers/comments (no real tasks).
-	text := string(content)
-	if isEmptyHeartbeat(text) {
-		return
-	}
-
-	// Ask LLM to decide using a dedicated heartbeat tool.
-	action, tasks := h.decide(ctx, text)
-	if action == "run" && h.onExecute != nil {
-		h.onExecute(ctx, tasks)
-	}
-}
-
-func (h *HeartbeatService) decide(ctx context.Context, heartbeatContent string) (string, string) {
-	sysPrompt := `You are a heartbeat scheduler. Review the HEARTBEAT.md file content and decide whether to execute any pending tasks.
-
-Use the heartbeat tool to respond:
-- action="skip" if there are no actionable tasks
-- action="run" if there are tasks that should be executed now, with a description of what to do`
-
-	userMsg := "HEARTBEAT.md content:\n\n" + heartbeatContent
-
-	// For now, use a simple heuristic: if HEARTBEAT.md has content beyond headers/comments,
-	// return "run". Full LLM-based decision requires tool binding which depends on the model.
-	// TODO: wire full LLM tool call when ChatModel supports BindTools/WithTools uniformly.
-	_ = sysPrompt
-	_ = userMsg
-
-	return "skip", ""
-}
-
-func isEmptyHeartbeat(text string) bool {
-	// Skip if only headers, comments, and whitespace.
-	for _, line := range []string{text} {
-		t := line
-		t = stripMarkdownHeadings(t)
-		t = stripHTMLComments(t)
-		t = stripWhitespace(t)
-		if t != "" {
-			return false
-		}
-	}
-	return true
-}
-
-func stripMarkdownHeadings(s string) string {
-	result := s
-	for _, prefix := range []string{"# ", "## ", "### "} {
+// Start begins the heartbeat ticker loop.
+func (s *HeartbeatService) Start(ctx context.Context) {
+	logHB.Info("heartbeat started", "interval", s.interval)
+	ticker := time.NewTicker(s.interval)
+	go func() {
 		for {
-			idx := 0
-			found := false
-			for i := 0; i < len(result); i++ {
-				if i+len(prefix) <= len(result) && result[i:i+len(prefix)] == prefix {
-					end := i + len(prefix)
-					for end < len(result) && result[end] != '\n' {
-						end++
-					}
-					result = result[:i] + result[end:]
-					found = true
-					break
-				}
+			select {
+			case <-ticker.C:
+				s.Tick(context.Background())
+			case <-s.stopCh:
+				ticker.Stop()
+				return
 			}
-			if !found {
-				break
-			}
-			_ = idx
 		}
-	}
-	return result
+	}()
 }
 
-func stripHTMLComments(s string) string {
-	result := s
-	for {
-		start := 0
-		for start < len(result)-3 && result[start:start+4] != "<!--" {
-			start++
+// Stop signals the heartbeat loop to exit.
+func (s *HeartbeatService) Stop() { close(s.stopCh) }
+
+// Tick performs a single heartbeat check: read HEARTBEAT.md, ask LLM to decide.
+func (s *HeartbeatService) Tick(ctx context.Context) {
+	content, err := os.ReadFile(s.heartbeatPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			logHB.Warn("read heartbeat file", "path", s.heartbeatPath, "error", err)
 		}
-		if start >= len(result)-3 {
-			break
-		}
-		end := start + 4
-		for end < len(result)-2 && result[end:end+3] != "-->" {
-			end++
-		}
-		if end >= len(result)-2 {
-			break
-		}
-		result = result[:start] + result[end+3:]
+		return
 	}
-	return result
+	if len(content) == 0 {
+		return
+	}
+
+	logHB.Debug("checking heartbeat tasks")
+	action, tasks, err := s.decide(ctx, string(content))
+	if err != nil {
+		logHB.Warn("heartbeat decision failed", "error", err)
+		return
+	}
+	if action != ActionRun {
+		logHB.Debug("no tasks to run")
+		return
+	}
+
+	logHB.Info("heartbeat tasks found, executing", "tasks", tasks)
+	if s.onExecute != nil {
+		if err := s.onExecute(ctx, tasks); err != nil {
+			logHB.Warn("heartbeat execution failed", "error", err)
+		}
+	}
 }
 
-func stripWhitespace(s string) string {
-	result := s
-	for _, c := range result {
-		if c != ' ' && c != '\n' && c != '\r' && c != '\t' {
-			return result
-		}
+func (s *HeartbeatService) decide(ctx context.Context, content string) (Action, string, error) {
+	hbTool := &schema.ToolInfo{
+		Name: "heartbeat",
+		Desc: "Report heartbeat decision after reviewing tasks.",
+		ParamsOneOf: schema.NewParamsOneOfByParams(map[string]*schema.ParameterInfo{
+			"action": {Type: "string", Desc: "skip = nothing to do, run = has active tasks", Enum: []string{"skip", "run"}},
+			"tasks":  {Type: "string", Desc: "Natural-language summary of active tasks (required for run)"},
+		}),
 	}
-	return ""
+
+	messages := []*schema.Message{
+		{Role: schema.System, Content: "You are a heartbeat agent. Call the heartbeat tool to report your decision."},
+		{Role: schema.User, Content: "Review the following HEARTBEAT.md content and decide if any tasks need to be executed now:\n\n" + content},
+	}
+
+	if err := s.model.BindTools([]*schema.ToolInfo{hbTool}); err != nil {
+		// Fallback: model doesn't support tool binding. Use content-based heuristic.
+		if contentIsTask(content) {
+			return ActionRun, content, nil
+		}
+		return ActionSkip, "", nil
+	}
+
+	resp, err := s.model.Generate(ctx, messages, model.WithToolChoice(schema.ToolChoiceForced))
+	if err != nil {
+		logHB.Warn("heartbeat generate failed, using heuristic", "error", err)
+		if contentIsTask(content) {
+			return ActionRun, content, nil
+		}
+		return ActionSkip, "", nil
+	}
+
+	if len(resp.ToolCalls) == 0 {
+		return ActionSkip, "", nil
+	}
+
+	var result struct {
+		Action string `json:"action"`
+		Tasks  string `json:"tasks"`
+	}
+	if err := json.Unmarshal([]byte(resp.ToolCalls[0].Function.Arguments), &result); err != nil {
+		return ActionSkip, "", nil
+	}
+
+	return Action(result.Action), result.Tasks, nil
 }
 
-// LastRun returns the last heartbeat time.
-func (h *HeartbeatService) LastRun() time.Time {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	return h.lastRun
+func contentIsTask(content string) bool {
+	for _, marker := range []string{"- [ ]", "- [x]", "* ", "1. "} {
+		if contains(content, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+// StartWithBus creates and starts a heartbeat HeartbeatService wired to the message bus.
+// If cfg.Enabled is false, returns nil. The onExecute callback publishes heartbeat
+// tasks as InboundMessages so the agent processes them like regular messages.
+func StartWithBus(
+	ctx context.Context,
+	cfg config.HeartbeatConfig,
+	chatModel model.ChatModel,
+	publishInbound func(channel, chatID, content string, metadata map[string]any),
+) *HeartbeatService {
+	if !cfg.Enabled {
+		return nil
+	}
+	interval := cfg.Interval.Duration
+	if interval <= 0 {
+		interval = 30 * time.Minute
+	}
+	path := cfg.Path
+	if path == "" {
+		path = "HEARTBEAT.md"
+	}
+
+	svc := New(path, chatModel, func(ctx context.Context, tasks string) error {
+		logHB.Info("heartbeat triggered", "tasks", tasks)
+		publishInbound("heartbeat", "system", tasks, map[string]any{"type": "heartbeat"})
+		return nil
+	}, interval)
+	svc.Start(ctx)
+	return svc
 }

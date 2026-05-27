@@ -44,11 +44,10 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Show Reasoning: %v\n", cfg.Channels.ShowReasoning)
 	fmt.Printf("  Transcription:  %s\n", cfg.Channels.TranscriptionProvider)
 
-	fmt.Println("\nGateway:")
-	fmt.Printf("  Host: %s\n", cfg.Gateway.Host)
-	fmt.Printf("  Port: %d\n", cfg.Gateway.Port)
-	fmt.Printf("  Heartbeat Enabled:  %v\n", cfg.Gateway.Heartbeat.Enabled)
-	fmt.Printf("  Heartbeat Interval: %ds\n", cfg.Gateway.Heartbeat.IntervalS)
+	fmt.Println("\nHeartbeat:")
+	fmt.Printf("  Enabled:  %v\n", cfg.Heartbeat.Enabled)
+	fmt.Printf("  Path:     %s\n", cfg.Heartbeat.Path)
+	fmt.Printf("  Interval: %v\n", cfg.Heartbeat.Interval.Duration)
 
 	fmt.Println("\nProviders:")
 	names := []string{"openai", "anthropic", "deepseek", "dashscope", "openrouter", "groq", "gemini", "ollama", "siliconflow", "zhipu"}

@@ -134,8 +134,25 @@ func NewAgent(
 		tcm = tc
 	}
 
+	a := &Agent{
+		consolidator:     consolidator,
+		promptLoader:     promptLoader,
+		skillManager:     skills,
+		sessions:         sessions,
+		cfg:              cfg,
+		chatModel:        chatModel,
+		tools:            toolList,
+		maxStep:          maxStep,
+		subagentManager:  subagentMgr,
+		toolCallingModel: tcm,
+	}
+
 	// Wrap all tools with truncation + progress reporting.
-	progressFn := func(ctx context.Context, toolName, status string) {}
+	progressFn := func(ctx context.Context, toolName, status string) {
+		if a.OnProgress != nil {
+			a.OnProgress(ctx, toolName, status)
+		}
+	}
 	wrappedTools := make([]tool.BaseTool, len(einoTools))
 	for i, t := range einoTools {
 		wrappedTools[i] = &wrappedEinoTool{inner: t, onProgress: progressFn}
@@ -147,21 +164,9 @@ func NewAgent(
 		return nil, err
 	}
 
-	a := &Agent{
-		reactAgent:       reactAgent,
-		consolidator:     consolidator,
-		promptLoader:     promptLoader,
-		skillManager:     skills,
-		sessions:         sessions,
-		cfg:              cfg,
-		chatModel:        chatModel,
-		tools:            toolList,
-		maxStep:          maxStep,
-		baseTools:        wrappedTools,
-		toolNames:        toolNames,
-		subagentManager:  subagentMgr,
-		toolCallingModel: tcm,
-	}
+	a.reactAgent = reactAgent
+	a.toolNames = toolNames
+	a.baseTools = wrappedTools
 	return a, nil
 }
 

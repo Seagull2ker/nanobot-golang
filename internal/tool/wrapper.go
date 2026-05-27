@@ -15,6 +15,8 @@ const toolFailureHint = "\n\n[Analyze the error above and try a different approa
 
 // ProgressFunc receives tool execution lifecycle events.
 // status is "running", "completed", or "failed".
+// ProgressFunc is called when a tool starts or finishes execution.
+// The context carries session ID and progress info for routing.
 type ProgressFunc func(ctx context.Context, toolName, status string)
 
 // wrappedTool decorates a Tool with result truncation, error normalization,

@@ -22,6 +22,8 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/tool"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 	"github.com/Seagull2ker/nanobot-go/internal/trace"
+	"github.com/Seagull2ker/nanobot-go/internal/types"
+	"github.com/Seagull2ker/nanobot-go/internal/workspace"
 )
 
 func newGatewayCmd() *cobra.Command {
@@ -48,6 +50,10 @@ func runGateway(cmd *cobra.Command, args []string) error {
 
 	slog.Info("nanobot gateway starting", "version", Version)
 
+	if err = workspace.SyncTemplates(config.GetPromptsDir()); err != nil {
+		return fmt.Errorf("sync templates: %w", err)
+	}
+
 	// 1. MessageBus
 	messageBus := bus.NewMessageBus()
 
@@ -60,41 +66,57 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	chatModel, err = provider.BuildChatModelFromPreset(ctx, cfg)
 	if err != nil {
 		slog.Warn("chat model not available — agent disabled", "error", err)
-	} else {
-		slog.Info("chat model ready", "model", chatModel.GetDefaultModel())
-
-		// 3. Tools from global registry.
-		toolList := tool.Global().List()
-		for _, name := range toolList {
-			if t, err := tool.Global().Get(name); err == nil {
-				toolInstances = append(toolInstances, t)
-			}
-		}
-		slog.Info("tools loaded", "count", len(toolInstances))
-
-		// 4. Sessions.
-		var sessions *session.SessionManager
-		sessions, err = session.NewSessionManager(config.GetSessionsDir())
-		if err != nil {
-			return fmt.Errorf("init sessions: %w", err)
-		}
-
-		// 5. Memory store.
-		memStore, err := agent.NewMemoryStore(config.GetMemoryDir())
-		if err != nil {
-			return fmt.Errorf("init memory: %w", err)
-		}
-
-		// 6. ReAct agent.
-		bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, config.GetPromptsDir(), config.GetSkillsDir(), sessions, nil, nil)
-		if err != nil {
-			return fmt.Errorf("build agent: %w", err)
-		}
-		slog.Info("agent built")
-		bot.OnProgress = tool.NewProgressHandler(messageBus)
-
-		go agent.RunInboundLoop(ctx, messageBus, bot, &loopWg)
+		return err
 	}
+	slog.Info("chat model ready", "model", chatModel.GetDefaultModel())
+
+	// 3. Tools from global registry.
+	toolList := tool.Global().List()
+	for _, name := range toolList {
+		if t, err := tool.Global().Get(name); err == nil {
+			toolInstances = append(toolInstances, t)
+		}
+	}
+	slog.Info("tools loaded", "count", len(toolInstances))
+
+	// 4. Sessions.
+	sessions, err := session.NewSessionManager(config.GetSessionsDir())
+	if err != nil {
+		return fmt.Errorf("init sessions: %w", err)
+	}
+
+	// 5. Memory store.
+	memStore, err := agent.NewMemoryStore(config.GetMemoryDir())
+	if err != nil {
+		return fmt.Errorf("init memory: %w", err)
+	}
+
+	// 6. ReAct agent.
+	bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, config.GetPromptsDir(), config.GetSkillsDir(), sessions, nil, nil)
+	if err != nil {
+		return fmt.Errorf("build agent: %w", err)
+	}
+	slog.Info("agent built")
+	bot.OnProgress = tool.NewProgressHandler(messageBus)
+
+	go agent.RunInboundLoop(ctx, messageBus, bot, &loopWg)
+
+	// 7. Cron.
+	cronDir := config.GetCronDir()
+	cronSvc := cron.New(cronDir+"/jobs.json", nil)
+	_ = cronSvc.Load()
+	go cronSvc.Run(ctx)
+
+	// 8. Heartbeat.
+	heartbeat.StartWithBus(ctx, cfg.Heartbeat, chatModel, func(channel, chatID, content string, meta map[string]any) {
+		messageBus.PublishInbound(ctx, &types.InboundMessage{
+			Channel: channel, ChatID: chatID, Content: content, Metadata: meta,
+		})
+	})
+
+	// 10. Command router.
+	cmdRouter := command.NewRouter()
+	_ = cmdRouter
 
 	// 6. Channels — Feishu if configured, WebSocket for WebUI.
 	chManager := channel.NewChannelManager(messageBus)
@@ -118,27 +140,6 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("start channels: %w", err)
 	}
 
-	// 7. Cron.
-	cronDir := config.GetCronDir()
-	cronSvc := cron.New(cronDir+"/jobs.json", nil)
-	_ = cronSvc.Load()
-	go cronSvc.Run(ctx)
-
-	// 8. Heartbeat.
-	if cfg.Gateway.Heartbeat.Enabled {
-		hbSvc := heartbeat.New(
-			time.Duration(cfg.Gateway.Heartbeat.IntervalS)*time.Second,
-			cfg.Gateway.Heartbeat.KeepRecentMessages,
-			chatModel,
-			config.GetPromptsDir()+"/HEARTBEAT.md",
-		)
-		go hbSvc.Run(ctx)
-	}
-
-	// 10. Command router.
-	cmdRouter := command.NewRouter()
-	_ = cmdRouter
-
 	// Startup summary.
 	fmt.Println("\n=== nanobot Gateway ===")
 	fmt.Printf("Version:    %s\n", Version)
@@ -148,7 +149,6 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		fmt.Println("Model:      (not configured — agent disabled)")
 	}
 	fmt.Printf("Tools:      %d loaded\n", len(toolInstances))
-	fmt.Printf("Gateway:    %s:%d (WebSocket)\n", cfg.Gateway.Host, cfg.Gateway.Port)
 	if cfg.Channels.Feishu.AppID != "" {
 		fmt.Println("Feishu:     enabled")
 	}
