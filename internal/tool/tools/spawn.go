@@ -12,16 +12,14 @@ type SubagentSpawner interface {
 	Spawn(ctx context.Context, task, label, channel, chatID, sessionKey string) (string, error)
 }
 
-var spawner SubagentSpawner
-
-// SetSubagentSpawner sets the backend for the spawn tool.
-func SetSubagentSpawner(s SubagentSpawner) {
-	spawner = s
+type spawnTool struct {
+	spawner SubagentSpawner
 }
 
-type spawnTool struct{}
-
-func init() { tool.Register(&spawnTool{}) }
+// NewSpawnTool creates a spawn tool with the given subagent spawner.
+func NewSpawnTool(s SubagentSpawner) tool.Tool {
+	return &spawnTool{spawner: s}
+}
 
 func (t *spawnTool) Name() string          { return "spawn" }
 func (t *spawnTool) ReadOnly() bool        { return false }
@@ -50,7 +48,7 @@ func (t *spawnTool) Parameters() map[string]any {
 }
 
 func (t *spawnTool) Execute(ctx context.Context, params map[string]any) (*tool.Result, error) {
-	if spawner == nil {
+	if t.spawner == nil {
 		return &tool.Result{Content: "Subagent spawner not configured"}, nil
 	}
 
@@ -71,7 +69,7 @@ func (t *spawnTool) Execute(ctx context.Context, params map[string]any) (*tool.R
 		label = label[:60]
 	}
 
-	taskID, err := spawner.Spawn(ctx, task, label, "", "", "")
+	taskID, err := t.spawner.Spawn(ctx, task, label, "", "", "")
 	if err != nil {
 		return &tool.Result{Content: fmt.Sprintf("Error spawning subagent: %v", err)}, nil
 	}

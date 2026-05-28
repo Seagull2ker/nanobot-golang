@@ -204,6 +204,7 @@ func DefaultGatewayConfig() GatewayConfig {
 
 // MCPServerConfig holds MCP server connection settings.
 type MCPServerConfig struct {
+	Name         string            `json:"name" yaml:"name"`
 	Type         string            `json:"type,omitempty" yaml:"type,omitempty"`
 	Command      string            `json:"command" yaml:"command"`
 	Args         []string          `json:"args,omitempty" yaml:"args,omitempty"`
@@ -265,8 +266,8 @@ type Config struct {
 // DefaultConfig returns a Config with all defaults populated.
 func DefaultConfig() Config {
 	return Config{
-		Agent:    DefaultAgentConfig(),
-		Channels: DefaultChannelsConfig(),
+		Agent:     DefaultAgentConfig(),
+		Channels:  DefaultChannelsConfig(),
 		Gateway:   DefaultGatewayConfig(),
 		Heartbeat: DefaultHeartbeatConfig(),
 		Tools:     DefaultToolsConfig(),

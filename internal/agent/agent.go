@@ -18,11 +18,13 @@ import (
 	"github.com/cloudwego/eino/schema"
 
 	"github.com/Seagull2ker/nanobot-go/internal/config"
+	"github.com/Seagull2ker/nanobot-go/internal/cron"
 	"github.com/Seagull2ker/nanobot-go/internal/prompt"
 	"github.com/Seagull2ker/nanobot-go/internal/provider"
 	"github.com/Seagull2ker/nanobot-go/internal/session"
+	"github.com/Seagull2ker/nanobot-go/internal/subagent"
 	nanotool "github.com/Seagull2ker/nanobot-go/internal/tool"
-	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
+	"github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 	"github.com/Seagull2ker/nanobot-go/internal/trace"
 )
 
@@ -60,7 +62,7 @@ type Agent struct {
 	mcpOnce    sync.Once
 
 	activeTasks     sync.Map
-	subagentManager SubagentCanceller
+	subagentManager *subagent.SubagentManager
 }
 
 // MCPConfig is a lightweight MCP server config passed from tools package.
@@ -79,11 +81,6 @@ type MCPConfig struct {
 // MCPConnector connects to MCP servers and returns tools.
 type MCPConnector func(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool, error)
 
-// SubagentCanceller is the interface for cancelling subagent tasks.
-type SubagentCanceller interface {
-	CancelBySession(sessionKey string) int
-	CancelAll() int
-}
 
 // NewAgent creates an Agent with all subsystems wired up.
 func NewAgent(
@@ -94,8 +91,8 @@ func NewAgent(
 	store *MemoryStore,
 	promptDir, builtinSkillsDir string,
 	sessions *session.SessionManager,
-	subagentMgr SubagentCanceller,
-	cronService CronSvc,
+	subagentMgr *subagent.SubagentManager,
+	cronService *cron.CronService,
 ) (*Agent, error) {
 	defs := cfg.Agent
 	maxStep := defs.MaxToolIterations
@@ -116,7 +113,7 @@ func NewAgent(
 
 	// Conditionally add spawn tool from subagent manager.
 	if subagentMgr != nil {
-		spawnAdapter := &einoToolAdapter{t: &spawnTool{spawner: subagentMgr}}
+		spawnAdapter := &einoToolAdapter{t: tools.NewSpawnTool(subagentMgr)}
 		einoTools = append(einoTools, spawnAdapter)
 	}
 
@@ -170,33 +167,6 @@ func NewAgent(
 	return a, nil
 }
 
-// CronSvc is the interface for the cron service.
-type CronSvc interface {
-	AddJob(schedule interface{}) (interface{}, error)
-	ListJobs() []interface{}
-	RemoveJob(id string) error
-}
-
-// spawnTool is a nanobot Tool wrapper for subagent spawning.
-type spawnTool struct {
-	spawner SubagentCanceller
-}
-
-func (s *spawnTool) Name() string               { return "spawn" }
-func (s *spawnTool) Description() string        { return "Spawn a background subagent" }
-func (s *spawnTool) Parameters() map[string]any { return map[string]any{} }
-func (s *spawnTool) ReadOnly() bool             { return false }
-func (s *spawnTool) ConcurrencySafe() bool      { return true }
-func (s *spawnTool) Exclusive() bool            { return false }
-func (s *spawnTool) Execute(ctx context.Context, params map[string]any) (*nanotool.Result, error) {
-	task, _ := params["task"].(string)
-	label, _ := params["label"].(string)
-	if task == "" {
-		return &nanotool.Result{Content: "Error: task is required"}, nil
-	}
-	_ = s.spawner.CancelBySession("")
-	return &nanotool.Result{Content: fmt.Sprintf("Subagent spawned for task: %s", label)}, nil
-}
 
 // wrappedEinoTool wraps an Eino BaseTool with progress reporting.
 // The progress callback is captured via closure from NewAgent and routed through a.OnProgress.

@@ -19,6 +19,7 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/heartbeat"
 	"github.com/Seagull2ker/nanobot-go/internal/provider"
 	"github.com/Seagull2ker/nanobot-go/internal/session"
+	"github.com/Seagull2ker/nanobot-go/internal/subagent"
 	"github.com/Seagull2ker/nanobot-go/internal/tool"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 	"github.com/Seagull2ker/nanobot-go/internal/trace"
@@ -91,8 +92,17 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("init memory: %w", err)
 	}
 
-	// 6. ReAct agent.
-	bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, config.GetPromptsDir(), config.GetSkillsDir(), sessions, nil, nil)
+	// 6. Subagent manager.
+	subagentMgr := subagent.NewSubagentManager(chatModel, toolInstances, messageBus, cfg.Agent.MaxToolIterations)
+
+	// 7. Cron.
+	cronDir := config.GetCronDir()
+	cronSvc := cron.New(cronDir+"/jobs.json", nil)
+	_ = cronSvc.Load()
+	go cronSvc.Run(ctx)
+
+	// 8. ReAct agent.
+	bot, err = agent.NewAgent(ctx, cfg, chatModel, toolInstances, memStore, config.GetPromptsDir(), config.GetSkillsDir(), sessions, subagentMgr, cronSvc)
 	if err != nil {
 		return fmt.Errorf("build agent: %w", err)
 	}
@@ -101,13 +111,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 
 	go agent.RunInboundLoop(ctx, messageBus, bot, &loopWg)
 
-	// 7. Cron.
-	cronDir := config.GetCronDir()
-	cronSvc := cron.New(cronDir+"/jobs.json", nil)
-	_ = cronSvc.Load()
-	go cronSvc.Run(ctx)
-
-	// 8. Heartbeat.
+	// 9. Heartbeat.
 	heartbeatService := heartbeat.StartWithBus(ctx, cfg.Heartbeat, chatModel, func(channel, chatID, content string, meta map[string]any) {
 		messageBus.PublishInbound(ctx, &types.InboundMessage{
 			Channel: channel, ChatID: chatID, Content: content, Metadata: meta,
@@ -118,7 +122,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	cmdRouter := command.NewRouter()
 	_ = cmdRouter
 
-	// 6. Channels — Feishu if configured, WebSocket for WebUI.
+	// 11. Channels — Feishu if configured, WebSocket for WebUI.
 	chManager := channel.NewChannelManager(messageBus)
 
 	if fc := cfg.Channels.Feishu; fc.AppID != "" {
@@ -165,7 +169,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		CancelRoot:         cancel,
 		CancelAgentTasks:   bot,
 		WaitGroup:          &loopWg,
-		CancelSubagentTask: nil,
+		CancelSubagentTask: subagentMgr,
 		CloseInbound:       closeMessageBus,
 		ShutdownTimeout:    15 * time.Second,
 		Components: app.RuntimeComponents{
