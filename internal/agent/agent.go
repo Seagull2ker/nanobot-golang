@@ -17,6 +17,7 @@ import (
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 
+	"github.com/Seagull2ker/nanobot-go/internal/command"
 	"github.com/Seagull2ker/nanobot-go/internal/config"
 	"github.com/Seagull2ker/nanobot-go/internal/cron"
 	"github.com/Seagull2ker/nanobot-go/internal/prompt"
@@ -62,6 +63,7 @@ type Agent struct {
 
 	activeTasks     sync.Map
 	subagentManager *subagent.SubagentManager
+	cmdRouter       *command.Router
 }
 
 // NewAgent creates an Agent with all subsystems wired up.
@@ -125,6 +127,7 @@ func NewAgent(
 		subagentManager:  subagentMgr,
 		toolCallingModel: tcm,
 	}
+	a.cmdRouter = command.NewRouter(a)
 
 	// Wrap all tools with truncation + progress reporting.
 	progressFn := func(ctx context.Context, toolName, status string) {
@@ -270,14 +273,8 @@ func (a *Agent) ensureMCPConnected(ctx context.Context) {
 // ChatStream processes a message within a session with full lifecycle.
 func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schema.StreamReader[*schema.Message], error) {
 	// Command detection — handle before any LLM work.
-	cmd := strings.TrimSpace(strings.ToLower(input))
-	switch cmd {
-	case "/new", "/clear":
-		return a.handleNewSession(ctx, sessionID)
-	case "/help":
-		return stringToStream(commandHelpText()), nil
-	case "/stop":
-		return a.handleStop(sessionID)
+	if content, handled := a.cmdRouter.Dispatch(ctx, sessionID, input); handled {
+		return stringToStream(content), nil
 	}
 
 	// Lazy-connect MCP servers on first real message.
@@ -399,6 +396,39 @@ func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schem
 
 // ---------- Command Handlers ----------
 
+// HandleNewSession satisfies command.AgentOps.
+func (a *Agent) HandleNewSession(ctx context.Context, sessionID string) (string, error) {
+	sr, err := a.handleNewSession(ctx, sessionID)
+	if err != nil {
+		return "", err
+	}
+	return readStreamContent(sr), nil
+}
+
+// HandleStop satisfies command.AgentOps.
+func (a *Agent) HandleStop(ctx context.Context, sessionID string) (string, error) {
+	sr, err := a.handleStop(sessionID)
+	if err != nil {
+		return "", err
+	}
+	return readStreamContent(sr), nil
+}
+
+func readStreamContent(sr *schema.StreamReader[*schema.Message]) string {
+	defer sr.Close()
+	var content strings.Builder
+	for {
+		msg, err := sr.Recv()
+		if err != nil {
+			break
+		}
+		if msg != nil {
+			content.WriteString(msg.Content)
+		}
+	}
+	return content.String()
+}
+
 func (a *Agent) handleNewSession(ctx context.Context, sessionID string) (*schema.StreamReader[*schema.Message], error) {
 	sess := a.sessions.GetOrCreate(sessionID)
 	logAgent.Info("new session", "session", sessionID, "messages", len(sess.Messages))
@@ -437,10 +467,6 @@ func (a *Agent) handleStop(sessionID string) (*schema.StreamReader[*schema.Messa
 		return stringToStream(msg), nil
 	}
 	return stringToStream("No active task to stop."), nil
-}
-
-func commandHelpText() string {
-	return "nanobot commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/help — Show available commands"
 }
 
 func (a *Agent) CancelAll() int {

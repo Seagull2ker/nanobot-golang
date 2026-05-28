@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudwego/eino/schema"
 	"github.com/Seagull2ker/nanobot-go/internal/bus"
 	"github.com/Seagull2ker/nanobot-go/internal/errors"
 	nanotool "github.com/Seagull2ker/nanobot-go/internal/tool"
 	"github.com/Seagull2ker/nanobot-go/internal/types"
+	"github.com/cloudwego/eino-ext/callbacks/langfuse"
+	"github.com/cloudwego/eino/schema"
 )
 
 // ChatStreamer is the interface the agent loop needs.
@@ -78,6 +79,16 @@ func processMessage(
 	if m.Channel == "system" {
 		targetChannel, targetChatID = decodeSystemRoute(m.ChatID)
 	}
+
+	ctx = langfuse.SetTrace(ctx,
+		langfuse.WithSessionID(sessionID),
+		langfuse.WithUserID(m.SenderID),
+		langfuse.WithName("chat"),
+		langfuse.WithMetadata(map[string]string{
+			"channel": targetChannel,
+			"chat_id": targetChatID,
+		}),
+	)
 
 	taskCtx, turnCtx := nanotool.NewTurnContext(ctx)
 	taskCtx = nanotool.ContextWithSessionID(taskCtx, sessionID)

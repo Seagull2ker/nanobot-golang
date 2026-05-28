@@ -468,14 +468,14 @@ func (c *FeishuChannel) Send(ctx context.Context, msg *types.OutboundMessage) er
 		return nil
 	}
 
-	replyTo := c.pickReplyTarget(msg)
+	// replyTo := c.pickReplyTarget(msg)
 
-	// Try threaded reply for first chunk.
-	if replyTo != "" {
-		if err := c.replyWithFallback(ctx, msg.ChatID, replyTo, chunks); err == nil {
-			return nil
-		}
-	}
+	// // Try threaded reply for first chunk.
+	// if replyTo != "" {
+	// 	if err := c.replyWithFallback(ctx, msg.ChatID, replyTo, chunks); err == nil {
+	// 		return nil
+	// 	}
+	// }
 
 	// Send as new messages.
 	for _, chunk := range chunks {

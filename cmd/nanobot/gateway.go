@@ -13,7 +13,6 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/app"
 	"github.com/Seagull2ker/nanobot-go/internal/bus"
 	"github.com/Seagull2ker/nanobot-go/internal/channel"
-	"github.com/Seagull2ker/nanobot-go/internal/command"
 	"github.com/Seagull2ker/nanobot-go/internal/config"
 	"github.com/Seagull2ker/nanobot-go/internal/cron"
 	"github.com/Seagull2ker/nanobot-go/internal/heartbeat"
@@ -118,11 +117,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		})
 	})
 
-	// 10. Command router.
-	cmdRouter := command.NewRouter()
-	_ = cmdRouter
-
-	// 11. Channels — Feishu if configured, WebSocket for WebUI.
+	// 10. Channels — Feishu if configured, WebSocket for WebUI.
 	chManager := channel.NewChannelManager(messageBus)
 
 	if fc := cfg.Channels.Feishu; fc.AppID != "" {

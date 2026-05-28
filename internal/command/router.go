@@ -5,25 +5,37 @@ import (
 	"strings"
 )
 
-// Handler is a command handler function.
-type Handler func(ctx context.Context, args []string) (string, error)
+// Result is the result of a command dispatch.
+type Result struct {
+	Content string // response text for simple commands
+	Handled bool   // true if the command was matched and handled
+}
+
+// AgentOps is the interface the agent provides for stateful commands.
+type AgentOps interface {
+	HandleNewSession(ctx context.Context, sessionID string) (string, error)
+	HandleStop(ctx context.Context, sessionID string) (string, error)
+}
 
 // Route defines a command route.
 type Route struct {
 	Command     string
 	Description string
-	Handler     Handler
 	Aliases     []string
 }
 
 // Router dispatches commands to registered handlers.
 type Router struct {
-	routes map[string]*Route
+	routes   map[string]*Route
+	agentOps AgentOps
 }
 
-// NewRouter creates a CommandRouter.
-func NewRouter() *Router {
-	r := &Router{routes: make(map[string]*Route)}
+// NewRouter creates a Router with built-in commands.
+func NewRouter(ops AgentOps) *Router {
+	r := &Router{
+		routes:   make(map[string]*Route),
+		agentOps: ops,
+	}
 	r.registerBuiltins()
 	return r
 }
@@ -36,85 +48,82 @@ func (r *Router) Register(route Route) {
 	}
 }
 
-// Dispatch routes a message and returns the handler result.
-// Returns nil if the message is not a command (no "/" prefix).
-func (r *Router) Dispatch(ctx context.Context, msg string) (string, error) {
+// Dispatch routes a message. Returns (result, handled).
+// handled=false means the message is not a command and should be sent to the LLM.
+func (r *Router) Dispatch(ctx context.Context, sessionID, msg string) (string, bool) {
 	msg = strings.TrimSpace(msg)
 	if !strings.HasPrefix(msg, "/") {
-		return "", nil
+		return "", false
 	}
 
 	parts := strings.Fields(msg)
 	if len(parts) == 0 {
-		return "", nil
+		return "", false
 	}
 
 	cmd := strings.ToLower(parts[0][1:]) // strip leading "/"
-	route, ok := r.routes[cmd]
+	_, ok := r.routes[cmd]
 	if !ok {
-		return "Unknown command. Type /help for available commands.", nil
+		return "Unknown command. Type /help for available commands.", true
 	}
 
-	return route.Handler(ctx, parts[1:])
+	switch cmd {
+	case "new", "clear":
+		if r.agentOps != nil {
+			content, err := r.agentOps.HandleNewSession(ctx, sessionID)
+			if err != nil {
+				return "Failed to start new session: " + err.Error(), true
+			}
+			return content, true
+		}
+		return "New session started.", true
+
+	case "stop":
+		if r.agentOps != nil {
+			content, err := r.agentOps.HandleStop(ctx, sessionID)
+			if err != nil {
+				return "Failed to stop: " + err.Error(), true
+			}
+			return content, true
+		}
+		return "Processing stopped.", true
+
+	case "help":
+		return r.buildHelp(), true
+
+	case "status":
+		return "nanobot is running.", true
+
+	case "skills":
+		return "Use the read_file tool to browse available skills in the skills directory.", true
+
+	default:
+		return "Unknown command. Type /help for available commands.", true
+	}
 }
 
-// ListRoutes returns all registered commands.
-func (r *Router) ListRoutes() []Route {
-	seen := make(map[string]bool)
-	var routes []Route
+func (r *Router) buildHelp() string {
+	var lines []string
+	lines = append(lines, "Available commands:")
+	for _, route := range r.routes {
+		if route.Command == route.Command { // dedup
+			continue
+		}
+	}
+	seen := map[string]bool{}
 	for _, route := range r.routes {
 		if !seen[route.Command] {
 			seen[route.Command] = true
-			routes = append(routes, *route)
+			lines = append(lines, "  /"+route.Command+" — "+route.Description)
 		}
 	}
-	return routes
+	return strings.Join(lines, "\n")
 }
 
 func (r *Router) registerBuiltins() {
-	r.Register(Route{
-		Command:     "help",
-		Description: "Show available commands",
-		Handler: func(ctx context.Context, args []string) (string, error) {
-			var lines []string
-			lines = append(lines, "Available commands:")
-			for _, route := range r.ListRoutes() {
-				lines = append(lines, "  /"+route.Command+" — "+route.Description)
-			}
-			return strings.Join(lines, "\n"), nil
-		},
-	})
-
-	r.Register(Route{
-		Command:     "new",
-		Aliases:     []string{"clear"},
-		Description: "Start a new conversation",
-		Handler: func(ctx context.Context, args []string) (string, error) {
-			return "Starting a new conversation. Previous context has been cleared.", nil
-		},
-	})
-
-	r.Register(Route{
-		Command:     "stop",
-		Description: "Stop the current processing",
-		Handler: func(ctx context.Context, args []string) (string, error) {
-			return "Processing stopped.", nil
-		},
-	})
-
-	r.Register(Route{
-		Command:     "status",
-		Description: "Show current status",
-		Handler: func(ctx context.Context, args []string) (string, error) {
-			return "nanobot is running.", nil
-		},
-	})
-
-	r.Register(Route{
-		Command:     "skills",
-		Description: "List available skills",
-		Handler: func(ctx context.Context, args []string) (string, error) {
-			return "Skills list (use the tools to browse skills).", nil
-		},
-	})
+	r.Register(Route{Command: "new", Aliases: []string{"clear"}, Description: "Start a new conversation"})
+	r.Register(Route{Command: "stop", Description: "Stop the current processing"})
+	r.Register(Route{Command: "help", Description: "Show available commands"})
+	r.Register(Route{Command: "status", Description: "Show current status"})
+	r.Register(Route{Command: "skills", Description: "List available skills"})
 }
