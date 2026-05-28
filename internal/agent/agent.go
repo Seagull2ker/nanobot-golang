@@ -58,29 +58,11 @@ type Agent struct {
 	OnProgress nanotool.ProgressFunc
 
 	// MCP lazy loading: configs stored at init, connected on first message.
-	mcpConfigs []MCPConfig
-	mcpOnce    sync.Once
+	mcpOnce sync.Once
 
 	activeTasks     sync.Map
 	subagentManager *subagent.SubagentManager
 }
-
-// MCPConfig is a lightweight MCP server config passed from tools package.
-type MCPConfig struct {
-	Name         string
-	Type         string
-	Command      string
-	Args         []string
-	Env          map[string]string
-	URL          string
-	Headers      map[string]string
-	ToolTimeout  time.Duration
-	EnabledTools []string
-}
-
-// MCPConnector connects to MCP servers and returns tools.
-type MCPConnector func(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool, error)
-
 
 // NewAgent creates an Agent with all subsystems wired up.
 func NewAgent(
@@ -167,7 +149,6 @@ func NewAgent(
 	return a, nil
 }
 
-
 // wrappedEinoTool wraps an Eino BaseTool with progress reporting.
 // The progress callback is captured via closure from NewAgent and routed through a.OnProgress.
 type wrappedEinoTool struct {
@@ -246,18 +227,18 @@ func (a *einoToolAdapter) InvokableRun(ctx context.Context, argumentsInJSON stri
 // recreating the react agent with the additional tools.
 func (a *Agent) ensureMCPConnected(ctx context.Context) {
 	a.mcpOnce.Do(func() {
-		if len(a.mcpConfigs) == 0 {
+		if len(a.cfg.Tools.MCPServers) == 0 {
 			return
 		}
-		logAgent.Info("lazy-connecting MCP servers", "count", len(a.mcpConfigs))
+		logAgent.Info("lazy-connecting MCP servers", "count", len(a.cfg.Tools.MCPServers))
 		var newTools []tool.BaseTool
-		for _, cfg := range a.mcpConfigs {
-			tools, err := connectMCPServer(ctx, cfg)
+		for _, cfg := range a.cfg.Tools.MCPServers {
+			mcpTools, err := tools.ConnectMCPServer(ctx, cfg)
 			if err != nil {
 				logAgent.Warn("MCP server connection failed, skipped", "server", cfg.Name, "error", err)
 				continue
 			}
-			for _, t := range tools {
+			for _, t := range mcpTools {
 				newTools = append(newTools, t)
 			}
 		}
@@ -284,14 +265,6 @@ func (a *Agent) ensureMCPConnected(ctx context.Context) {
 
 		logAgent.Info("MCP tools connected, agent rebuilt", "new_tools", len(newTools))
 	})
-}
-
-// connectMCPServer is set by the tools package to break the import cycle.
-var connectMCPServer func(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool, error)
-
-// SetMCPConnector sets the MCP connection function.
-func SetMCPConnector(fn func(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool, error)) {
-	connectMCPServer = fn
 }
 
 // ChatStream processes a message within a session with full lifecycle.

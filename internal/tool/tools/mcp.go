@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Seagull2ker/nanobot-go/internal/config"
 	"github.com/cloudwego/eino-ext/components/tool/mcp/officialmcp"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/schema"
@@ -17,19 +18,6 @@ import (
 )
 
 var logMCP = slog.With("module", "mcp")
-
-// MCPConfig is the configuration for one MCP server connection.
-type MCPConfig struct {
-	Name         string
-	Type         string
-	Command      string
-	Args         []string
-	Env          map[string]string
-	URL          string
-	Headers      map[string]string
-	ToolTimeout  time.Duration
-	EnabledTools []string
-}
 
 type mcpSessionEntry struct {
 	serverName string
@@ -43,7 +31,7 @@ var (
 
 // ConnectMCPServer dials an MCP server, registers the session, and returns
 // InvokableTools for each tool the server advertises.
-func ConnectMCPServer(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool, error) {
+func ConnectMCPServer(ctx context.Context, cfg config.MCPServerConfig) ([]tool.InvokableTool, error) {
 	transportType := cfg.Type
 	if transportType == "" {
 		switch {
@@ -60,8 +48,9 @@ func ConnectMCPServer(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool,
 		}
 	}
 
-	if cfg.ToolTimeout == 0 {
-		cfg.ToolTimeout = 30 * time.Second
+	timeout := time.Duration(cfg.ToolTimeout) * time.Second
+	if timeout == 0 {
+		timeout = 30 * time.Second
 	}
 
 	var transport mcp.Transport
@@ -132,7 +121,7 @@ func ConnectMCPServer(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool,
 	var tools []tool.InvokableTool
 	for _, bt := range baseTools {
 		if it, ok := bt.(tool.InvokableTool); ok {
-			tools = append(tools, &mcpToolWrapper{inner: it, serverName: cfg.Name, toolTimeout: cfg.ToolTimeout})
+			tools = append(tools, &mcpToolWrapper{inner: it, serverName: cfg.Name, toolTimeout: timeout})
 		}
 	}
 
@@ -191,18 +180,6 @@ func (w *mcpToolWrapper) InvokableRun(ctx context.Context, args string, opts ...
 type headerTransport struct {
 	base    http.RoundTripper
 	headers map[string]string
-}
-
-// MCPConnectorFunc is the function signature for connecting MCP servers.
-type MCPConnectorFunc func(ctx context.Context, cfg MCPConfig) ([]tool.InvokableTool, error)
-
-// ConnectMCPWithConfig converts a generic config and connects to the MCP server.
-func ConnectMCPWithConfig(ctx context.Context, name, transportType, command, url string, args []string, env, headers map[string]string, toolTimeout time.Duration, enabledTools []string) ([]tool.InvokableTool, error) {
-	return ConnectMCPServer(ctx, MCPConfig{
-		Name: name, Type: transportType, Command: command, Args: args,
-		Env: env, URL: url, Headers: headers, ToolTimeout: toolTimeout,
-		EnabledTools: enabledTools,
-	})
 }
 
 func (t *headerTransport) RoundTrip(req *http.Request) (*http.Response, error) {

@@ -211,7 +211,7 @@ type MCPServerConfig struct {
 	Env          map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 	URL          string            `json:"url" yaml:"url"`
 	Headers      map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
-	ToolTimeout  int               `json:"toolTimeout" yaml:"tool_timeout"`
+	ToolTimeout  int               `json:"toolTimeout" yaml:"tool_timeout"` // 单位秒
 	EnabledTools []string          `json:"enabledTools" yaml:"enabled_tools"`
 }
 
