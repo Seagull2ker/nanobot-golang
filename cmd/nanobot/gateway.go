@@ -96,8 +96,8 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("build agent: %w", err)
 	}
-	slog.Info("agent built")
 	bot.OnProgress = tool.NewProgressHandler(messageBus)
+	slog.Info("agent built success")
 
 	go agent.RunInboundLoop(ctx, messageBus, bot, &loopWg)
 
@@ -108,7 +108,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	go cronSvc.Run(ctx)
 
 	// 8. Heartbeat.
-	heartbeat.StartWithBus(ctx, cfg.Heartbeat, chatModel, func(channel, chatID, content string, meta map[string]any) {
+	heartbeatService := heartbeat.StartWithBus(ctx, cfg.Heartbeat, chatModel, func(channel, chatID, content string, meta map[string]any) {
 		messageBus.PublishInbound(ctx, &types.InboundMessage{
 			Channel: channel, ChatID: chatID, Content: content, Metadata: meta,
 		})
@@ -155,7 +155,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	fmt.Println("\nAll systems ready. Press Ctrl-C to stop.")
 
 	// Graceful shutdown orchestration.
-	closeInbound := func() {
+	closeMessageBus := func() {
 		messageBus.Close()
 		messageBus.CloseOutbound()
 	}
@@ -166,18 +166,15 @@ func runGateway(cmd *cobra.Command, args []string) error {
 		CancelAgentTasks:   bot,
 		WaitGroup:          &loopWg,
 		CancelSubagentTask: nil,
-		CloseInbound:       closeInbound,
+		CloseInbound:       closeMessageBus,
 		ShutdownTimeout:    15 * time.Second,
 		Components: app.RuntimeComponents{
-			Feishu:               nil,
 			API:                  nil,
+			Heartbeat:            heartbeatService,
+			Channels:             chManager,
 			ComponentStopTimeout: 5 * time.Second,
 		},
 	})
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
-	chManager.StopAll(shutdownCtx)
 
 	return nil
 }

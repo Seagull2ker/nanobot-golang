@@ -12,13 +12,13 @@ import (
 
 // RuntimeComponents collects stoppable subsystems for orderly shutdown.
 type RuntimeComponents struct {
-	Feishu interface {
-		Stop(ctx context.Context) error
-	}
 	Heartbeat interface{ Stop() }
 	Cron      interface{ Stop() }
 	API       interface {
 		Stop(ctx context.Context) error
+	}
+	Channels interface {
+		StopAll(ctx context.Context) error
 	}
 
 	ComponentStopTimeout time.Duration
@@ -113,15 +113,15 @@ func stopComponents(c RuntimeComponents, timeout time.Duration) {
 			slog.Warn("api stop", "error", err)
 		}
 	}
-	if c.Feishu != nil {
-		if err := c.Feishu.Stop(ctx); err != nil {
-			slog.Warn("feishu stop", "error", err)
-		}
-	}
 	if c.Heartbeat != nil {
 		c.Heartbeat.Stop()
 	}
 	if c.Cron != nil {
 		c.Cron.Stop()
+	}
+	if c.Channels != nil {
+		if err := c.Channels.StopAll(ctx); err != nil {
+			slog.Warn("channels stop", "error", err)
+		}
 	}
 }
