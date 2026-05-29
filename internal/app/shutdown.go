@@ -31,6 +31,7 @@ type RuntimeComponents struct {
 		StopAll(ctx context.Context) error
 	}
 
+	CloseMCP             func() int
 	ComponentStopTimeout time.Duration
 }
 
@@ -133,5 +134,9 @@ func stopComponents(c RuntimeComponents, timeout time.Duration) {
 		if err := c.Channels.StopAll(ctx); err != nil {
 			slog.Warn("channels stop", "error", err)
 		}
+	}
+	if !isNilInterface(c.CloseMCP) {
+		closed := c.CloseMCP()
+		slog.Info("MCP connections closed", "count", closed)
 	}
 }

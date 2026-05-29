@@ -20,6 +20,7 @@ import (
 	"github.com/Seagull2ker/nanobot-go/internal/session"
 	"github.com/Seagull2ker/nanobot-go/internal/subagent"
 	"github.com/Seagull2ker/nanobot-go/internal/tool"
+	"github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 	_ "github.com/Seagull2ker/nanobot-go/internal/tool/tools"
 	"github.com/Seagull2ker/nanobot-go/internal/trace"
 	"github.com/Seagull2ker/nanobot-go/internal/types"
@@ -171,6 +172,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 			API:                  nil,
 			Heartbeat:            heartbeatService,
 			Channels:             chManager,
+			CloseMCP:             tools.CloseMCPConnections,
 			ComponentStopTimeout: 5 * time.Second,
 		},
 	})
