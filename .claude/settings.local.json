@@ -91,7 +91,11 @@
       "Bash(sed -i '/}\\)/!{N};/MaxConcurrentSubagents/{N;s/.*\\\\n.*/}/}' cmd/nanobot/gateway.go)",
       "Bash(sed -i '/go loop.Run\\(ctx\\)/d' cmd/nanobot/gateway.go)",
       "Bash(sed -i '94,98d' cmd/nanobot/gateway.go)",
-      "Bash(sed -i '93a\\\\\\\\t\\\\t\\\\tloop = agent.RunLoop\\(ctx, messageBus, bot, cfg.Agent.MaxConcurrentSubagents\\)' cmd/nanobot/gateway.go)"
+      "Bash(sed -i '93a\\\\\\\\t\\\\t\\\\tloop = agent.RunLoop\\(ctx, messageBus, bot, cfg.Agent.MaxConcurrentSubagents\\)' cmd/nanobot/gateway.go)",
+      "Read(//usr/local/go/bin/**)",
+      "Read(//opt/homebrew/opt/**)",
+      "Bash(GOTOOLCHAIN=auto go build *)",
+      "Bash(GOTOOLCHAIN=auto go test *)"
     ]
   }
 }

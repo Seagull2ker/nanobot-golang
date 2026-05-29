@@ -2,7 +2,10 @@ package agent
 
 import "context"
 
-// ProgressHook provides streaming progress callbacks for agent execution.
+// ProgressHook provides streaming progress callbacks so external consumers
+// (e.g., channels, WebSocket clients) can observe agent activity in real time:
+// content deltas, tool start/end, reasoning chunks, errors, and completion.
+// Each callback is optional — unset callbacks are silently skipped.
 type ProgressHook struct {
 	OnContent   func(ctx context.Context, delta string)
 	OnToolStart func(ctx context.Context, name string, args map[string]any)

@@ -31,7 +31,12 @@ type ToolResultInfo struct {
 	Error   string
 }
 
-// AgentHook observes and modifies agent iteration lifecycle events.
+// AgentHook provides lifecycle callbacks into the agent execution loop.
+// Hooks observe (and can modify) each iteration: before/after the LLM call,
+// tool execution, streaming deltas, reasoning extraction, and final content.
+//
+// CompositeHook fans out to multiple hooks with error isolation — a failure
+// in one hook never blocks the others or the main agent flow.
 type AgentHook interface {
 	BeforeIteration(ctx context.Context, state *IterationState) error
 	AfterIteration(ctx context.Context, state *IterationState) error
@@ -57,7 +62,9 @@ func (h *BaseHook) FinalizeContent(ctx context.Context, content string) (string,
 	return content, nil
 }
 
-// CompositeHook fans out to multiple hooks with error isolation.
+// CompositeHook fans out lifecycle events to all registered hooks.
+// Each hook runs independently — panics and errors in one hook do not
+// affect execution of the others.
 type CompositeHook struct {
 	mu    sync.RWMutex
 	hooks []AgentHook

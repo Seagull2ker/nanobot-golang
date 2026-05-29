@@ -5,10 +5,20 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"reflect"
 	"sync"
 	"syscall"
 	"time"
 )
+
+// isNilInterface returns true for nil or typed-nil interface values.
+func isNilInterface(v any) bool {
+	if v == nil {
+		return true
+	}
+	rv := reflect.ValueOf(v)
+	return rv.Kind() == reflect.Ptr && rv.IsNil()
+}
 
 // RuntimeComponents collects stoppable subsystems for orderly shutdown.
 type RuntimeComponents struct {
@@ -108,18 +118,18 @@ func stopComponents(c RuntimeComponents, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	if c.API != nil {
+	if !isNilInterface(c.API) {
 		if err := c.API.Stop(ctx); err != nil {
 			slog.Warn("api stop", "error", err)
 		}
 	}
-	if c.Heartbeat != nil {
+	if !isNilInterface(c.Heartbeat) {
 		c.Heartbeat.Stop()
 	}
-	if c.Cron != nil {
+	if !isNilInterface(c.Cron) {
 		c.Cron.Stop()
 	}
-	if c.Channels != nil {
+	if !isNilInterface(c.Channels) {
 		if err := c.Channels.StopAll(ctx); err != nil {
 			slog.Warn("channels stop", "error", err)
 		}

@@ -22,7 +22,13 @@ func DefaultDreamConfig() DreamConfig {
 	}
 }
 
-// Dream handles two-stage memory processing.
+// Dream implements the two-stage memory processing described in plan.md:
+//
+//	Phase 1 (LLM analysis): unprocessed events → LLM → structured observations
+//	Phase 2 (file editing): observations → MEMORY.md updates via agent tools
+//
+// Dream runs on a configurable interval (default every 2 hours) and processes
+// events in batches to keep long-term memory fresh without overwhelming the model.
 type Dream struct {
 	store      *MemoryStore
 	config     DreamConfig

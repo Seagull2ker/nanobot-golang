@@ -6,7 +6,11 @@ import (
 	"time"
 )
 
-// ContextBuilder assembles system prompts and message arrays for agent turns.
+// ContextBuilder assembles the system prompt for each agent turn by
+// concatenating sections in order: Identity → Bootstrap (AGENTS.md/SOUL.md) →
+// Long-term Memory → Skills summary. The runtime context (time, channel, chat_id)
+// is appended separately to the user message to keep the system prompt stable
+// for prompt caching.
 type ContextBuilder struct {
 	identity  string
 	bootstrap string

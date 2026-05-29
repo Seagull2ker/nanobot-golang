@@ -111,7 +111,7 @@ func runGateway(cmd *cobra.Command, args []string) error {
 	go agent.RunInboundLoop(ctx, messageBus, bot, &loopWg)
 
 	// 9. Heartbeat.
-	heartbeatService := heartbeat.StartWithBus(ctx, cfg.Heartbeat, chatModel, func(channel, chatID, content string, meta map[string]any) {
+	heartbeatService := heartbeat.StartWithBus(ctx, cfg.Gateway.Heartbeat, chatModel, func(channel, chatID, content string, meta map[string]any) {
 		messageBus.PublishInbound(ctx, &types.InboundMessage{
 			Channel: channel, ChatID: chatID, Content: content, Metadata: meta,
 		})

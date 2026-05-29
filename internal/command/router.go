@@ -15,6 +15,14 @@ type Result struct {
 type AgentOps interface {
 	HandleNewSession(ctx context.Context, sessionID string) (string, error)
 	HandleStop(ctx context.Context, sessionID string) (string, error)
+	GetToolInfos() []ToolInfo
+}
+
+// ToolInfo describes a single tool for the /tools command.
+type ToolInfo struct {
+	Name        string
+	Description string
+	Parameters  map[string]any // JSON Schema
 }
 
 // Route defines a command route.
@@ -97,6 +105,9 @@ func (r *Router) Dispatch(ctx context.Context, sessionID, msg string) (string, b
 	case "skills":
 		return "Use the read_file tool to browse available skills in the skills directory.", true
 
+	case "tools":
+		return r.buildTools(), true
+
 	default:
 		return "Unknown command. Type /help for available commands.", true
 	}
@@ -105,11 +116,6 @@ func (r *Router) Dispatch(ctx context.Context, sessionID, msg string) (string, b
 func (r *Router) buildHelp() string {
 	var lines []string
 	lines = append(lines, "Available commands:")
-	for _, route := range r.routes {
-		if route.Command == route.Command { // dedup
-			continue
-		}
-	}
 	seen := map[string]bool{}
 	for _, route := range r.routes {
 		if !seen[route.Command] {
@@ -120,10 +126,73 @@ func (r *Router) buildHelp() string {
 	return strings.Join(lines, "\n")
 }
 
+func (r *Router) buildTools() string {
+	infos := r.agentOps.GetToolInfos()
+	if len(infos) == 0 {
+		return "No tools available."
+	}
+
+	var lines []string
+	lines = append(lines, "Available tools:")
+	for _, t := range infos {
+		lines = append(lines, "")
+		desc := t.Description
+		if desc == "" {
+			desc = "(no description)"
+		}
+		lines = append(lines, "  /"+t.Name+" — "+desc)
+
+		if params := formatToolParams(t.Parameters); params != "" {
+			lines = append(lines, "    Parameters:")
+			lines = append(lines, params)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func formatToolParams(schema map[string]any) string {
+	props, ok := schema["properties"].(map[string]any)
+	if !ok || len(props) == 0 {
+		return ""
+	}
+
+	required := map[string]bool{}
+	if reqList, ok := schema["required"].([]any); ok {
+		for _, r := range reqList {
+			if name, ok := r.(string); ok {
+				required[name] = true
+			}
+		}
+	}
+
+	var lines []string
+	for name, raw := range props {
+		prop, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		desc := ""
+		if d, _ := prop["description"].(string); d != "" {
+			desc = " — " + d
+		}
+		mark := "  (optional)"
+		if required[name] {
+			mark = "  (required)"
+		}
+		typeStr := "string"
+		if t, _ := prop["type"].(string); t != "" {
+			typeStr = t
+		}
+		lines = append(lines, "      "+name+": "+typeStr+mark+desc)
+	}
+	return strings.Join(lines, "\n")
+}
+
 func (r *Router) registerBuiltins() {
 	r.Register(Route{Command: "new", Aliases: []string{"clear"}, Description: "Start a new conversation"})
 	r.Register(Route{Command: "stop", Description: "Stop the current processing"})
 	r.Register(Route{Command: "help", Description: "Show available commands"})
 	r.Register(Route{Command: "status", Description: "Show current status"})
 	r.Register(Route{Command: "skills", Description: "List available skills"})
+	r.Register(Route{Command: "tools", Description: "List available tools"})
 }

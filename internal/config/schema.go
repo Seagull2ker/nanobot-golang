@@ -194,12 +194,15 @@ func DefaultCronGatewayConfig() CronGatewayConfig {
 
 // GatewayConfig holds gateway/server settings.
 type GatewayConfig struct {
-	Cron CronGatewayConfig `json:"cron" yaml:"cron"`
+	Cron      CronGatewayConfig `json:"cron" yaml:"cron"`
+	Heartbeat HeartbeatConfig   `json:"heartbeat" yaml:"heartbeat"`
 }
 
 // DefaultGatewayConfig returns the default gateway configuration.
 func DefaultGatewayConfig() GatewayConfig {
-	return GatewayConfig{}
+	return GatewayConfig{
+		Heartbeat: DefaultHeartbeatConfig(),
+	}
 }
 
 // MCPServerConfig holds MCP server connection settings.
@@ -235,13 +238,6 @@ func DefaultToolsConfig() ToolsConfig {
 	return ToolsConfig{}
 }
 
-// DataConfig is kept for backward compatibility with existing config files.
-// New code should use config.GetSessionsDir() / config.GetMemoryDir() instead.
-type DataConfig struct {
-	Dir       string `json:"dir"`
-	MemoryDir string `json:"memoryDir"`
-}
-
 // TracingConfig holds Langfuse tracing settings.
 type TracingConfig struct {
 	Enabled   bool   `json:"enabled"`
@@ -257,9 +253,7 @@ type Config struct {
 	Providers ProvidersConfig `json:"providers" yaml:"providers"`
 	API       ApiConfig       `json:"api" yaml:"api"`
 	Gateway   GatewayConfig   `json:"gateway" yaml:"gateway"`
-	Heartbeat HeartbeatConfig `json:"heartbeat" yaml:"heartbeat"`
 	Tools     ToolsConfig     `json:"tools" yaml:"tools"`
-	Data      DataConfig      `json:"data" yaml:"data"`
 	Trace     TracingConfig   `json:"trace" yaml:"trace"`
 }
 
@@ -269,7 +263,6 @@ func DefaultConfig() Config {
 		Agent:     DefaultAgentConfig(),
 		Channels:  DefaultChannelsConfig(),
 		Gateway:   DefaultGatewayConfig(),
-		Heartbeat: DefaultHeartbeatConfig(),
 		Tools:     DefaultToolsConfig(),
 	}
 }

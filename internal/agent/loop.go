@@ -25,9 +25,14 @@ type sessionQueue struct {
 	ch chan *types.InboundMessage
 }
 
-// RunInboundLoop processes messages from the bus using per-session workers.
-// Each session gets its own goroutine — serial within session, parallel across sessions.
-// wg is incremented per new worker; caller may wg.Wait() to block until all workers finish.
+// RunInboundLoop is the AgentLoop described in plan.md. It reads messages from
+// the bus and dispatches them to per-session goroutine workers — serial within a
+// session (ensuring message ordering), parallel across sessions.
+//
+// Each session gets a buffered channel (capacity 32). The first message for a
+// new session spawns a long-lived worker; subsequent messages are queued.
+// Workers shut down when the bus is closed and the queue drains.
+// wg is incremented per worker so callers can Wait for graceful drain.
 func RunInboundLoop(
 	ctx context.Context,
 	messageBus *bus.MessageBus,
@@ -67,6 +72,10 @@ func RunInboundLoop(
 	})
 }
 
+// processMessage handles a single inbound message end-to-end:
+// langfuse tracing setup → Eino ReAct streaming → consume chunks →
+// publish outbound response (unless the tool already sent a reply).
+// On transient errors it retries once after a 2s delay.
 func processMessage(
 	ctx context.Context,
 	messageBus *bus.MessageBus,

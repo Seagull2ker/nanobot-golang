@@ -55,7 +55,11 @@ type Skill struct {
 
 // ---------- SkillsLoader ----------
 
-// SkillsLoader loads skills from workspace and builtin directories.
+// SkillsLoader loads SKILL.md files from two directories with workspace
+// shadowing builtin: if a skill with the same name exists in both,
+// the workspace version wins. Each skill is a directory containing a
+// SKILL.md file with YAML frontmatter (name, description, always, metadata).
+// Always-on skills are injected into the system prompt on every turn.
 type SkillsLoader struct {
 	workspaceSkillsDir string
 	builtinSkillsDir   string

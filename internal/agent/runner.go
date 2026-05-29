@@ -7,7 +7,18 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-// AgentRunner wraps a react.Agent with empty response and length recovery.
+// AgentRunner wraps a react.Agent with recovery logic for two failure modes:
+//
+//  1. Empty response recovery: when the agent returns neither content nor
+//     tool calls, re-prompt with "Please provide your response." (up to
+//     MaxEmptyRetries times).
+//
+//  2. Length truncation recovery: when finish_reason="length", the model
+//     was cut off mid-response. Append a continuation prompt (up to
+//     MaxLengthRecoveries times).
+//
+// This is the AgentRunner layer from plan.md — it sits above Eino's ReAct
+// loop and below the AgentLoop message dispatch.
 type AgentRunner struct {
 	agent  *react.Agent
 	hooks  *CompositeHook
@@ -45,7 +56,9 @@ type ChatResult struct {
 	Messages  []*schema.Message
 }
 
-// Run executes a single agent turn with recovery logic.
+// Run executes a single agent turn. It loops internally:
+// runOnce → check empty → re-prompt → check length → continue prompt → return.
+// Stops when a valid result is obtained or recovery budgets are exhausted.
 func (r *AgentRunner) Run(ctx context.Context, messages []*schema.Message) (*ChatResult, error) {
 	emptyRetries := 0
 	lengthRecoveries := 0

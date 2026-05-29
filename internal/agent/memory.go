@@ -40,9 +40,14 @@ func normalizeHistoryEntryTimestamp(entry string, now time.Time) string {
 
 // ---------- MemoryStore ----------
 
-// MemoryStore manages two-layer persistent memory:
-//   - MEMORY.md: long-term facts, overwritten on each consolidation.
-//   - HISTORY.md: append-only timestamped event log.
+// MemoryStore manages two-layer persistent memory as described in plan.md:
+//   - MEMORY.md: long-term facts, fully overwritten on each consolidation.
+//   - HISTORY.md: append-only timestamped event log, never truncated.
+//
+// Consolidation is LLM-driven: messages are sent to the model with a
+// save_memory tool, and the model produces a history_entry (timestamped
+// summary) and memory_update (full replacement of MEMORY.md).
+// If the LLM path fails 3 consecutive times, fallback to raw archive.
 type MemoryStore struct {
 	memoryDir           string
 	memoryFile          string
@@ -284,7 +289,11 @@ func DefaultConsolidationConfig() ConsolidationConfig {
 	}
 }
 
-// MemoryConsolidator manages automatic LLM-driven memory consolidation.
+// MemoryConsolidator drives automatic memory consolidation triggered by
+// token budget pressure. When the session's estimated tokens exceed the
+// consolidation ratio of the context window, it picks a safe user-turn
+// boundary and sends the batch to MemoryStore.Consolidate for LLM summarization.
+// Consolidation is per-session-locked to avoid concurrent compaction races.
 type MemoryConsolidator struct {
 	Store      *MemoryStore
 	chatModel  emodel.ChatModel
@@ -392,9 +401,9 @@ func (c *MemoryConsolidator) estimatePromptTokens(s *session.Session, basePrompt
 	return total
 }
 
-// pickConsolidationBoundary finds a safe user-turn boundary for truncation.
-// Returns the index just before a user message (so the consolidated batch
-// ends cleanly at an assistant/tool turn).
+// pickConsolidationBoundary finds a safe user-turn boundary so the
+// consolidated batch always ends cleanly before a user message —
+// no partial turn is trimmed from context.
 func (c *MemoryConsolidator) pickConsolidationBoundary(s *session.Session, tokensToRemove int) int {
 	currentTokens := 0
 	boundary := s.LastConsolidated

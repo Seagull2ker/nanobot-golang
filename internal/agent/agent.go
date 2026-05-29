@@ -35,9 +35,15 @@ const toolRecoveryHint = "\n\n[Analyze the error above and try a different appro
 
 // ---------- Agent ----------
 
-// Agent wraps an Eino react.Agent with full ChatStream lifecycle:
-// command detection → pre-consolidation → build prompt → stream with MessageFuture →
-// save turn → post-consolidation.
+// Agent is the core ReAct agent assembled on top of Eino's react.Agent.
+// It manages the full lifecycle of a conversation turn:
+//
+//	command detection → pre-consolidation → prompt assembly → ReAct stream →
+//	save turn with MessageFuture → post-consolidation → cleanup.
+//
+// The Eino react.Agent handles the think→act→observe loop internally;
+// Agent adds governance (message repair before each LLM call), tool progress
+// reporting, MCP lazy-loading, and memory consolidation on top.
 type Agent struct {
 	mu           sync.RWMutex
 	reactAgent   *react.Agent
@@ -66,7 +72,11 @@ type Agent struct {
 	cmdRouter       *command.Router
 }
 
-// NewAgent creates an Agent with all subsystems wired up.
+// NewAgent creates an Agent by wiring together all subsystems:
+// tool wrapping (progress reporting) → prompt/skill loaders →
+// memory consolidator → command router → Eino react.Agent with
+// governance message modifier. MCP servers are lazily connected
+// on the first real message to avoid blocking startup.
 func NewAgent(
 	ctx context.Context,
 	cfg *config.Config,
@@ -153,7 +163,9 @@ func NewAgent(
 }
 
 // wrappedEinoTool wraps an Eino BaseTool with progress reporting.
-// The progress callback is captured via closure from NewAgent and routed through a.OnProgress.
+// It intercepts InvokableRun to emit running/completed/failed events
+// through the Agent's OnProgress callback, which the gateway routes to
+// the message bus for real-time streaming to clients.
 type wrappedEinoTool struct {
 	inner      tool.BaseTool
 	onProgress func(ctx context.Context, toolName, status string)
@@ -179,6 +191,9 @@ func (w *wrappedEinoTool) InvokableRun(ctx context.Context, args string, opts ..
 	return result, err
 }
 
+// buildReactAgent creates an Eino react.Agent wired with the governance message modifier.
+// The modifier runs before every LLM call to repair the message list:
+// orphan cleanup, backfill missing tool results, microcompact stale tool outputs.
 func buildReactAgent(ctx context.Context, cfg *config.Config, chatModel provider.ChatModelAdapter, einoTools []tool.BaseTool, toolNames []string, maxStep int) (*react.Agent, error) {
 	modifier := buildMessageModifier(cfg)
 
@@ -186,10 +201,48 @@ func buildReactAgent(ctx context.Context, cfg *config.Config, chatModel provider
 		Model: chatModel,
 		ToolsConfig: compose.ToolsNodeConfig{
 			Tools: einoTools,
+			UnknownToolsHandler: func(ctx context.Context, name, input string) (string, error) {
+				available := strings.Join(toolNames, ", ")
+				if available == "" {
+					available = "(none)"
+				}
+				return fmt.Sprintf(
+					"Error: Tool '%s' not found. Available tools: %s.%s",
+					name,
+					available,
+					toolRecoveryHint,
+				), nil
+			},
+			ToolArgumentsHandler: func(ctx context.Context, name, arguments string) (string, error) {
+				normalized := normalizeToolArguments(arguments)
+				if normalized == "" {
+					return "{}", nil
+				}
+				return normalized, nil
+			},
 		},
-		MessageModifier: modifier,
-		MaxStep:         maxStep,
+		MessageModifier:       modifier,
+		MaxStep:               maxStep,
+		StreamToolCallChecker: StreamToolCallChecker,
 	})
+}
+
+// StreamToolCallChecker is the standard Eino StreamToolCallChecker:
+// it drains the stream and returns true if any message contains tool calls.
+func StreamToolCallChecker(ctx context.Context, sr *schema.StreamReader[*schema.Message]) (bool, error) {
+	defer sr.Close()
+	for {
+		msg, err := sr.Recv()
+		if err == io.EOF {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if len(msg.ToolCalls) > 0 {
+			return true, nil
+		}
+	}
 }
 
 // ---------- Tool Adapter ----------
@@ -270,7 +323,11 @@ func (a *Agent) ensureMCPConnected(ctx context.Context) {
 	})
 }
 
-// ChatStream processes a message within a session with full lifecycle.
+// ChatStream processes a message within a session, executing a full ReAct turn.
+// The pipeline: command detection → MCP lazy-connect → pre-consolidation →
+// prompt assembly → Eino ReAct stream (think→act→observe loop) →
+// collect intermediate messages via MessageFuture → save turn → post-consolidation.
+// Returns a StreamReader so the caller can consume the assistant's response in real time.
 func (a *Agent) ChatStream(ctx context.Context, sessionID, input string) (*schema.StreamReader[*schema.Message], error) {
 	// Command detection — handle before any LLM work.
 	if content, handled := a.cmdRouter.Dispatch(ctx, sessionID, input); handled {
@@ -469,6 +526,23 @@ func (a *Agent) handleStop(sessionID string) (*schema.StreamReader[*schema.Messa
 	return stringToStream("No active task to stop."), nil
 }
 
+// GetToolInfos returns metadata for all currently registered tools.
+// This includes base tools and any lazily-loaded MCP tools.
+func (a *Agent) GetToolInfos() []command.ToolInfo {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	var result []command.ToolInfo
+	for _, t := range a.tools {
+		result = append(result, command.ToolInfo{
+			Name:        t.Name(),
+			Description: t.Description(),
+			Parameters:  t.Parameters(),
+		})
+	}
+	return result
+}
+
 func (a *Agent) CancelAll() int {
 	cancelled := 0
 	a.activeTasks.Range(func(key, value any) bool {
@@ -603,15 +677,18 @@ func truncateString(s string, max int) string {
 
 func stringToStream(content string) *schema.StreamReader[*schema.Message] {
 	sr, sw := schema.Pipe[*schema.Message](1)
-	go func() {
-		sw.Send(&schema.Message{Role: schema.Assistant, Content: content}, nil)
-		sw.Close()
-	}()
+	sw.Send(&schema.Message{Role: schema.Assistant, Content: content}, nil)
+	sw.Close()
 	return sr
 }
 
 // ---------- Governance ----------
 
+// buildMessageModifier returns a react.MessageModifier that repairs the message
+// list before each LLM call. This is the Governance layer described in plan.md:
+//  1. Drop orphan tool results (role=tool without a matching tool_call declaration)
+//  2. Backfill missing tool results (declared tool_calls with no matching tool message)
+//  3. Microcompact: replace old tool outputs with placeholders, then truncate oversized results
 func buildMessageModifier(cfg *config.Config) react.MessageModifier {
 	return func(ctx context.Context, input []*schema.Message) []*schema.Message {
 		messages := dropOrphanToolResults(input)
@@ -621,6 +698,10 @@ func buildMessageModifier(cfg *config.Config) react.MessageModifier {
 	}
 }
 
+// dropOrphanToolResults removes tool messages whose ToolCallID has no
+// matching tool_call declaration from any preceding assistant message.
+// These orphans occur when a tool call was interrupted or the assistant
+// message containing the declaration was trimmed from context.
 func dropOrphanToolResults(messages []*schema.Message) []*schema.Message {
 	declaredIDs := make(map[string]bool)
 	for _, m := range messages {
@@ -642,6 +723,10 @@ func dropOrphanToolResults(messages []*schema.Message) []*schema.Message {
 	return result
 }
 
+// backfillMissingToolResults inserts placeholder tool messages for any
+// assistant-declared tool_calls that have no corresponding tool result.
+// This prevents the LLM from seeing broken tool call chains (providers
+// typically reject messages where a tool_call is missing its result).
 func backfillMissingToolResults(messages []*schema.Message) []*schema.Message {
 	toolResultIDs := make(map[string]bool)
 	for _, m := range messages {
@@ -667,6 +752,11 @@ func backfillMissingToolResults(messages []*schema.Message) []*schema.Message {
 	return result
 }
 
+// microcompact keeps the context window manageable by replacing old,
+// large tool results (e.g. read_file, exec, web_search) with short
+// placeholders. Only the 10 most recent compactable results are kept
+// in full; older ones are replaced with "[<name> result omitted from context]".
+// After compacting, any remaining oversized results are truncated.
 func microcompact(messages []*schema.Message, maxResultChars int) []*schema.Message {
 	const keepRecent = 10
 	const minCompactChars = 500
